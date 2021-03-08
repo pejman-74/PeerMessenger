@@ -1,43 +1,52 @@
 # In name of Allah
 
-## Introduction
-We want a simple messaging application to enable two users, chatting via bluetooth. Note that only text messages will be exchanged.
+## 1.First of all, We need to choose an architectural design.
 
-This application as you may have figured out, has two parts:
-
-1. Finding peer: it should be possible to find & connect to peer by bluetooth
-2. Chat page: it is possible to chat with peer in realtime, both sending & receiving chat messages ofcourse needs to be implemented.
-
-#### Note
-An elegant UI is desired, you can use whatever library you see fit, except anything that implements this challenge as a whole.
+Because the MVVM architecture was suggested by Google and also because most of the documentation is written for this architecture, I chose it. However, I think the MVI architecture is also suitable for this project.
 
 
-### Advanced level
-For advanced part, you need to add two functionalities:
-1. stabilize & make chat reliable: meaning every message you send to peer, must be delivered no matter the situation (the app gets closed, the phone battery dies out, connection break & ...), for this you can use queue for storing messaging till they are successfully received & acknowledged by other side.
-2. chat list & history: use database to store messages, so that later, user can view previous chat sessions. A chat message list also needs to be implemented to be able to get back to previous chat sessions as desired.  
+## 2.Design database
 
-#### Note 
-You only need to implement advanced level part, if specified by your mentor (for senior positions)
+A relational database is suitable for this challenge and the best relational database for Android is "Room".
+And I usually chose that. some reasons:
 
-## Expectations
+* In this challenge we have two entities, device and message. And the relationship between these two expansions is one to many. And easily implemented by "Room"
 
-So What does matter to us?
-- good codebase architecture
-- pleasant UI
-- clean code practices
-- ability to layout page correctly
-- finally, ability to learn
+* With "flow" you can easily see the changes inside the database, and this is a great advantage provided by the room and coroutine.
 
-## Tasks
+* Room also supports transactions and this is awesome for real-time apps.
 
-1. Fork this repository
-2. Estimate the develop & send it to us
-3. Break and specify your tasks in project management tool (append the image of your tasks to readme file of your project)
-4. Learn & Develop
-5. Push your code to your repository
-6. Explain the roadmap of your development in readme of repository (also append the image of your specified tasks on part 3 to file)
-6. Send us a pull request, we will review and get back to you
-7. Enjoy
+## 3.Design Ui
+  * used Material Design, which is my favorite design language. And I have usually used its components.
 
-**Finally** don't be afraid to ask anything from us.
+  * Lottie library to show the clock below undelivered messages  note: I feel this app UI is not very well It could have been better if I had spent more time :(
+
+## 4.Testing
+  * I wrote several unit tests and integration tests for this challenge. Because this program has no complicated logic, its existence is not felt much. But I used it to show my abilities
+
+## 5.Working with Bluetooth
+* I thought this part would not take much time, but a small mistake caused me to waste hours of time, but I finally overcame it. I used Google's example for this part and I think this is a best practice. Although I think it needs to be rewritten like corountine.
+
+## 6.Stabilize & make chat reliable:
+* When the user is offline, he can also send his message and messages will be sent as soon as he is connected to that user.
+
+* **To make sure the message is received by the user:**
+For this feature, I used the acknowledgment technique in such a way that when the message is successfully received, a feedback message is sent to the sender and this action is also stored in the sender's database because the connection may be lost when sending feedback. The next connection sends a feedback message.
+
+## 7.Chat list and history:
+As written in the database design section, there are several messages per user, and with a simple relationship, all users and their messages can be displayed on the home-fragment by the 'flow' (to receive last updates).
+
+
+
+## App Screenshots
+
+<img src="./images/1.png" width="250" height="500" />
+<img src="./images/2.png" width="250" height="500" /> <br />
+
+<img src="./images/3.png" width="250" height="500" />
+<img src="./images/4.png" width="250" height="500" />
+
+## Tasks Screenshot
+<img src="./images/tasks.png" /><br /><br />
+
+### **Thanks for your attention.**

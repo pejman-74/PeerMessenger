@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.peer_messanger.ui.fragments.HomeFragment"
+        android:label="@string/app_name"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_homeFragment_to_findingFragment"
+            app:destination="@id/findingFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/chatFragment"
+        android:name="com.peer_messanger.ui.fragments.ChatFragment"
+        android:label="fragment_chat"
+        tools:layout="@layout/fragment_chat" >
+        <argument
+            android:name="device"
+            app:argType="com.peer_messanger.data.model.Device" />
+    </fragment>
+    <fragment
+        android:id="@+id/findingFragment"
+        android:name="com.peer_messanger.ui.fragments.FindingFragment"
+        android:label="Bluetooth devices"
+        tools:layout="@layout/fragment_finding" />
+    <action
+        android:id="@+id/action_global_chatFragment"
+        app:destination="@id/chatFragment"
+        app:launchSingleTop="true"
+        app:popUpToInclusive="false" />
+</navigation>

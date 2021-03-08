@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Peer Messenger</string>
+    <string name="available_devices">Available devices</string>
+    <string name="ok">OK</string>
+    <string name="turn_on_the_bluetooth">Turn on the bluetooth</string>
+    <string name="turn_on">Turn on</string>
+    <string name="inappropriate_device_select">This app just can work with phones!</string>
+    <string name="paired_devices">Paired devices</string>
+    <string name="message">Message</string>
+    <string name="offline_work">Offline work</string>
+    <string name="user_disconnect">No connection</string>
+    <string name="try_connect">Try connect</string>
+    <string name="connecting">connecting</string>
+    <string name="app_cant_work_without_bt_on_lunch">This app can\'t work without bluetooth on lunch time</string>
+    <string name="location_permission_is_necessary_to_search">Location permission is necessary to search</string>
+</resources>
