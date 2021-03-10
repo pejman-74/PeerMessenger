@@ -17,13 +17,12 @@ import com.peer_messanger.ui.listener.HomeItemListener
 import com.peer_messanger.ui.vm.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
-@AndroidEntryPoint
 class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeItemListener {
 
     lateinit var homeRecyclerViewAdapter: HomeRecyclerViewAdapter
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         vBinding.fabAddNew.setOnClickListener {
             findNavController().navigate(HomeFragmentDirections.actionHomeFragmentToFindingFragment())

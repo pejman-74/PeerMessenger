@@ -35,8 +35,10 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     private lateinit var availableRecyclerViewAdapter: FindingRecyclerViewAdapter
     lateinit var pairedRecyclerViewAdapter: FindingRecyclerViewAdapter
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         mainActivity = requireActivity() as MainActivity
 
         availableRecyclerViewAdapter = FindingRecyclerViewAdapter(this)

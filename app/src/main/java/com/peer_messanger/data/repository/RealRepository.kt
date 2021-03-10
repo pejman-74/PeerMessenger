@@ -1,30 +1,34 @@
 package com.peer_messanger.data.repository
 
-import androidx.room.withTransaction
-import com.peer_messanger.data.local.database.AppDatabase
+import com.peer_messanger.data.dao.DeviceDao
+import com.peer_messanger.data.dao.MessageDao
 import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.model.Device
 import javax.inject.Inject
 
-class RealRepository @Inject constructor(private val db: AppDatabase) : Repository {
+class RealRepository @Inject constructor(
+    private val deviceDao: DeviceDao,
+    private val messageDao: MessageDao
+) :
+    Repository {
     override suspend fun saveMessage(bluetoothMessage: BluetoothMessage) {
-        db.messageDao().insert(bluetoothMessage)
+        messageDao.insert(bluetoothMessage)
     }
 
     override suspend fun saveDevice(device: Device) {
-        db.deviceDao().insert(device)
+        deviceDao.insert(device)
     }
 
     override suspend fun setBluetoothMessageIsDelivered(messageId: String, isDelivered: Boolean) =
-        db.messageDao().setIsDelivered(messageId, isDelivered)
+        messageDao.setIsDelivered(messageId, isDelivered)
 
-    override fun getAllDevicesWithMessages() = db.deviceDao().getAllDevicesWithMessages()
+    override fun getAllDevicesWithMessages() = deviceDao.getAllDevicesWithMessages()
 
     override suspend fun getUnDeliveredMessages(macAddress: String) =
-        db.messageDao().getUnDeliveredMessages(macAddress)
+        messageDao.getUnDeliveredMessages(macAddress)
 
     override suspend fun getUnacknowledgedMessages(macAddress: String) =
-        db.messageDao().getUnacknowledgedMessages(macAddress)
+        messageDao.getUnacknowledgedMessages(macAddress)
 
 
 

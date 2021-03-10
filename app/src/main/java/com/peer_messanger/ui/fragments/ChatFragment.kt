@@ -21,8 +21,8 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
     private lateinit var mainActivity: MainActivity
     private lateinit var chatRecyclerViewAdapter: ChatRecyclerViewAdapter
     private val args: ChatFragmentArgs by navArgs()
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         mainActivity = requireActivity() as MainActivity
 
         mainActivity.supportActionBar?.title = args.device.name
