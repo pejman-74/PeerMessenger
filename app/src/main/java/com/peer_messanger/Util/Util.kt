@@ -21,7 +21,6 @@ const val TAG = "peerMassage"
 
 const val selfUserDatabaseId = "0"
 const val PERMISSION_REQUEST_CODE = 110
-const val REQUEST_ENABLE_BT = 100
 
 fun Context.singleButtonAlertDialog(
     message: String,

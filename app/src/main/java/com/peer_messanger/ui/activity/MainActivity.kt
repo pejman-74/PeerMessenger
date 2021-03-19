@@ -8,13 +8,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavController
 import androidx.navigation.findNavController
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.gson.Gson
 import com.peer_messanger.R
@@ -35,7 +34,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private val vModel: MainViewModel by viewModels()
-    private lateinit var appBarConfiguration: AppBarConfiguration
+    private lateinit var navController: NavController
     private var bluetoothOffDialog: AlertDialog? = null
     lateinit var activityMainBinding: ActivityMainBinding
 
@@ -50,16 +49,18 @@ class MainActivity : AppCompatActivity() {
         activityMainBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(activityMainBinding.root)
 
-        val navHostFragment =
-            supportFragmentManager.findFragmentById(R.id.fcv_main) as NavHostFragment
-        val navController = navHostFragment.navController
+        navController = findNavController(R.id.fcv_main)
 
-        //config action bar with navhostFragment
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
+        //config action bar with navController
+        setupActionBarWithNavController(navController)
 
         //get adapter for manage bt
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        try {
+            bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        } catch (e: Exception) {
+            showLongToast(getString(R.string.device_not_support_bt))
+            finish()
+        }
         registerReceiver(bluetoothReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
 
         //when bluetooth turned off, show the alert dialog to user
@@ -339,7 +340,7 @@ class MainActivity : AppCompatActivity() {
         // If BT is not on, request that it be enabled.
         if (!bluetoothAdapter.isEnabled) {
             val enableIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-            startActivityForResult(enableIntent, REQUEST_ENABLE_BT)
+            lunchActivityForEnableBT.launch(enableIntent)
             // Otherwise, setup the chat session
         } else if (mChatService == null) {
             // Initialize the BluetoothChatService to perform bluetooth connections
@@ -367,24 +368,20 @@ class MainActivity : AppCompatActivity() {
         mChatService?.stop()
     }
 
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            // When the request to enable Bluetooth returns
-            REQUEST_ENABLE_BT ->
-                if (resultCode == RESULT_OK) {
-                    // Bluetooth is now enabled, so set up chat service
-                    mChatService = BluetoothChatService(this, mHandler)
-                } else {
-                    // User did not enable Bluetooth or an error occurred
-                    println("$TAG BT not enabled")
-                    this.showLongToast(getString(R.string.app_cant_work_without_bt_on_lunch))
-                    this.finish()
-                }
-
+    private val lunchActivityForEnableBT =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                // Bluetooth is now enabled, so set up chat service
+                mChatService = BluetoothChatService(this, mHandler)
+            } else {
+                // User did not enable Bluetooth or an error occurred
+                println("$TAG BT not enabled")
+                this.showLongToast(getString(R.string.app_cant_work_without_bt_on_lunch))
+                this.finish()
+            }
         }
-    }
+
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -405,9 +402,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.fcv_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+        return navController.navigateUp() || super.onSupportNavigateUp()
     }
 
 }

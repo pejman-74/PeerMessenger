@@ -15,7 +15,6 @@ import com.peer_messanger.ui.adapters.HomeRecyclerViewItem
 import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.listener.HomeItemListener
 import com.peer_messanger.ui.vm.MainViewModel
-import dagger.hilt.android.AndroidEntryPoint
 
 class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeItemListener {
 
