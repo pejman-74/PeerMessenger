@@ -17,7 +17,7 @@ import java.util.*
 import kotlin.coroutines.CoroutineContext
 
 
-class BluetoothChatService(private val ioContext: CoroutineContext) {
+class BluetoothChatService(private val ioDispatcher: CoroutineDispatcher) {
 
     // Member fields
     private var mAdapter: BluetoothAdapter? = null
@@ -245,7 +245,7 @@ class BluetoothChatService(private val ioContext: CoroutineContext) {
 
         private val job = Job()
         override val coroutineContext: CoroutineContext
-            get() = job + ioContext
+            get() = job + ioDispatcher
 
 
         // The local server socket
@@ -328,7 +328,7 @@ class BluetoothChatService(private val ioContext: CoroutineContext) {
 
         private val job = Job()
         override val coroutineContext: CoroutineContext
-            get() = job + ioContext
+            get() = job + ioDispatcher
 
         private var mmSocket: BluetoothSocket? = try {
 
@@ -397,7 +397,7 @@ class BluetoothChatService(private val ioContext: CoroutineContext) {
 
         private val job = Job()
         override val coroutineContext: CoroutineContext
-            get() = job + ioContext
+            get() = job + ioDispatcher
 
         var inStream: InputStream? = try {
             mmSocket.inputStream
