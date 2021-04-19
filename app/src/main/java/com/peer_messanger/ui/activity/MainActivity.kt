@@ -12,22 +12,24 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.google.gson.Gson
 import com.peer_messanger.R
+import com.peer_messanger.bluetoothchat.BTChatEvents
 import com.peer_messanger.bluetoothchat.BluetoothChatService
-import com.peer_messanger.bluetoothchat.Constants
 import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.model.Device
-import com.peer_messanger.data.wrap.BluetoothEventResource
 import com.peer_messanger.data.wrap.ScanResource
 import com.peer_messanger.databinding.ActivityMainBinding
 import com.peer_messanger.ui.fragments.HomeFragmentDirections
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.*
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 
 
 @AndroidEntryPoint
@@ -40,7 +42,7 @@ class MainActivity : AppCompatActivity() {
 
     private var mChatService: BluetoothChatService? = null
     private lateinit var bluetoothAdapter: BluetoothAdapter
-    private var currentConnectedDevice: BluetoothDevice? = null
+    private var currentBT: BluetoothDevice? = null
 
 
 
@@ -100,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         })
         //save self user to make relationShip
         vModel.saveDevice(selfUserDatabaseId, "self")
+
     }
 
 
@@ -190,98 +193,73 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private val mHandler =
-        object : Handler(Looper.getMainLooper()) {
-            override fun handleMessage(msg: Message) {
-                when (msg.what) {
-                    Constants.MESSAGE_STATE_CHANGE -> {
+    private fun setObservers() {
+        lifecycleScope.launchWhenStarted {
+            mChatService?.getEventFlow()?.collect {
+                when (it) {
 
-                        when (msg.arg1) {
-
-                            BluetoothChatService.STATE_CONNECTED -> {
-                                println("$TAG STATE_CONNECTED")
-                                //send connected device to chat fragment
-                                vModel.postBluetoothEventsResource(BluetoothEventResource.DeviceConnected)
-                            }
-
-                            BluetoothChatService.STATE_CONNECTING -> {
-                                println("$TAG STATE_CONNECTING")
-
-                                //send connected device to chat fragment
-                                vModel.postBluetoothEventsResource(BluetoothEventResource.DeviceConnecting)
-                            }
-
-                            BluetoothChatService.STATE_LISTEN, BluetoothChatService.STATE_NONE -> {
-                                println("$TAG STATE_LISTEN || STATE_NONE")
-                                //send connected device to chat fragment
-                                vModel.postBluetoothEventsResource(BluetoothEventResource.DeviceDisconnected)
-                            }
-                        }
+                    is BTChatEvents.SendingMessage -> {
                     }
 
-                    Constants.MESSAGE_WRITE -> {
-                        println("$TAG MESSAGE_WRITE")
-
-                    }
+                    is BTChatEvents.ReceivedMessage -> {
 
 
-                    Constants.MESSAGE_READ -> {
-                        println("$TAG MESSAGE_READ")
-                        val readBuf = msg.obj as ByteArray
-                        val message = String(readBuf, 0, msg.arg1)
-
-                        if (message.startsWith("ack=")) {
-                            val messageId = message.substringAfter("=")
+                        if (it.message.startsWith("ack=")) {
+                            val messageId = it.message.substringAfter("=")
                             //set message is IsDelivered true
                             if (messageId.isNotBlank())
                                 vModel.setBluetoothMessageIsDelivered(messageId, true)
                         } else {
                             //save received message to db
-                            vModel.saveReceivedMessage(message, currentConnectedDevice?.address)
+                            vModel.saveReceivedMessage(it.message, currentBT?.address)
                         }
                     }
 
 
-                    Constants.MESSAGE_DEVICE_NAME -> {
-                        println("$TAG MESSAGE_DEVICE_NAME")
-                        currentConnectedDevice = msg.data.getParcelable(Constants.DEVICE_NAME)
+                    is BTChatEvents.Connected -> {
+                        currentBT = it.device ?: return@collect
 
                         //save connected user to database
-                        currentConnectedDevice?.let {
-                            if (!it.address.isNullOrBlank() && !it.name.isNullOrBlank())
-                                vModel.saveDevice(it.address, it.name)
+                        currentBT?.apply {
+                            if (!address.isNullOrBlank() && !name.isNullOrBlank())
+                                vModel.saveDevice(address, name)
                         }
 
 
                         //get undelivered connected user messages
-                        vModel.getUnDeliveredMessages(currentConnectedDevice!!.address)
+                        vModel.getUnDeliveredMessages(currentBT!!.address)
 
                         //get unacknowledgedMessages connected user messages
-                        vModel.getUnacknowledgedMessages(currentConnectedDevice!!.address)
+                        vModel.getUnacknowledgedMessages(currentBT!!.address)
 
                         //navigate to chat fragment
                         findNavController(R.id.fcv_main).navigate(
                             HomeFragmentDirections.actionGlobalChatFragment(
                                 Device(
-                                    currentConnectedDevice!!.address!!,
-                                    currentConnectedDevice!!.name
+                                    currentBT!!.address!!,
+                                    currentBT!!.name
                                 )
                             )
                         )
                     }
 
-                    Constants.MESSAGE_TOAST -> {
-                        println("$TAG MESSAGE_TOAST")
-                        val message = msg.data.getString(Constants.TOAST)
-                        message?.let {
-                            activityMainBinding.root.snackBar(it)
-                        }
+                    is BTChatEvents.Connecting -> {
+                        activityMainBinding.root.snackBar(it.device?.name + " Connecting")
                     }
 
+                    is BTChatEvents.ConnectionFailed -> {
+                        activityMainBinding.root.snackBar(it.deviceName + " Unable to connect device")
 
+                    }
+
+                    is BTChatEvents.Disconnect -> {
+                        activityMainBinding.root.snackBar(it.deviceName + " connection was lost")
+                    }
                 }
             }
+
         }
+    }
 
     private fun sendAckMessage(messageId: String) {
         if (messageId.isBlank()) {
@@ -326,12 +304,12 @@ class MainActivity : AppCompatActivity() {
 
     private  fun sendMessageWithBluetooth(message: String) {
         // Check that we're actually connected before trying anything
-        if (mChatService?.state != BluetoothChatService.STATE_CONNECTED) {
+        if (mChatService?.getState() != BluetoothChatService.STATE_CONNECTED) {
             println("$TAG sendMessage is failed because not connected ")
             return
         }
-        val byteArrayMessage = message.encodeToByteArray()
-        mChatService?.write(byteArrayMessage)
+
+        mChatService?.sendMessage(message)
     }
 
 
@@ -344,7 +322,8 @@ class MainActivity : AppCompatActivity() {
             // Otherwise, setup the chat session
         } else if (mChatService == null) {
             // Initialize the BluetoothChatService to perform bluetooth connections
-            mChatService = BluetoothChatService(this, mHandler)
+            mChatService = BluetoothChatService(Dispatchers.IO)
+            setObservers()
         }
     }
 
@@ -355,7 +334,7 @@ class MainActivity : AppCompatActivity() {
         // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
         mChatService?.let {
             // Only if the state is STATE_NONE, do we know that we haven't started already
-            if (it.state == BluetoothChatService.STATE_NONE) {
+            if (it.getState() == BluetoothChatService.STATE_NONE) {
                 // Start the Bluetooth chat services
                 it.start()
 
@@ -372,7 +351,7 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
                 // Bluetooth is now enabled, so set up chat service
-                mChatService = BluetoothChatService(this, mHandler)
+                mChatService = BluetoothChatService(Dispatchers.IO)
             } else {
                 // User did not enable Bluetooth or an error occurred
                 println("$TAG BT not enabled")
