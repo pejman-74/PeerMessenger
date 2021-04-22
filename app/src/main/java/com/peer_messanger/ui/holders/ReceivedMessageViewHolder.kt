@@ -10,7 +10,7 @@ class ReceivedMessageViewHolder(private val itemBinding: ReceivedMessageBinding)
     RecyclerView.ViewHolder(itemBinding.root) {
     fun bind(bluetoothMessage: BluetoothMessage) {
         itemBinding.tvChatMessage.text = bluetoothMessage.body
-        itemBinding.tvChatTime.text = bluetoothMessage.createdTime?.toLocalTime()
+        itemBinding.tvChatTime.text = bluetoothMessage.createdTime.toLocalTime()
         itemBinding.cvChatMessage.setTailLength("left", 10f)
     }
 }

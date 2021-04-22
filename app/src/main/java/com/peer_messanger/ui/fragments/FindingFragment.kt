@@ -14,9 +14,10 @@ import android.view.ViewGroup
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.peer_messanger.R
-import com.peer_messanger.data.wrap.ScanResource
+import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.databinding.FragmentFindingBinding
 import com.peer_messanger.ui.activity.MainActivity
 import com.peer_messanger.ui.adapters.FindingRecyclerViewAdapter
@@ -25,6 +26,8 @@ import com.peer_messanger.ui.listener.BluetoothDeviceItemListener
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.PERMISSION_REQUEST_CODE
 import com.peer_messanger.util.singleButtonAlertDialog
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 
 class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
@@ -49,12 +52,10 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
         }
 
 
-        vModel.pairedDevices.observe(viewLifecycleOwner, {
-
+        vModel.getPairedDevices().let {
             pairedRecyclerViewAdapter.setData(ArrayList(it))
-        })
+        }
 
-        mainActivity.getPairedDevices()
 
         vBinding.rvOnlineDevice.apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -69,26 +70,28 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
             makeVisible()
         }
         val foundedDevices = ArrayList<BluetoothDevice>()
-        vModel.scanDeviceResource.observe(viewLifecycleOwner, {
-            when (it) {
-                is ScanResource.DiscoveryStarted -> {
-                    vBinding.pfabSearch.showLoadingAnimation(true)
-                    foundedDevices.clear()
-                    availableRecyclerViewAdapter.setData(ArrayList(foundedDevices))
-                }
-                is ScanResource.DiscoveryFinished -> {
-                    vBinding.pfabSearch.showLoadingAnimation(false)
-                }
-                is ScanResource.ItemFound -> {
-                    if (it.value !in foundedDevices) {
-                        foundedDevices.add(it.value)
+
+        lifecycleScope.launch {
+            vModel.scanFlow.collect {
+                when (it) {
+                    is ScanResource.DiscoveryStarted -> {
+                        vBinding.pfabSearch.showLoadingAnimation(true)
+                        foundedDevices.clear()
                         availableRecyclerViewAdapter.setData(ArrayList(foundedDevices))
                     }
+                    is ScanResource.DiscoveryFinished -> {
+                        vBinding.pfabSearch.showLoadingAnimation(false)
+                    }
+                    is ScanResource.DeviceFound -> {
+                        if (it.device !in foundedDevices) {
+                            foundedDevices.add(it.device)
+                            availableRecyclerViewAdapter.setData(ArrayList(foundedDevices))
+                        }
+                    }
                 }
+
             }
-
-        })
-
+        }
 
     }
 
@@ -110,11 +113,11 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
                         PERMISSION_REQUEST_CODE
                     )
                 } else {
-                    mainActivity.startScanning()
+                    vModel.startScan()
                 }
             }
             else ->
-                mainActivity.startScanning()
+                vModel.startScan()
         }
 
     }
@@ -131,7 +134,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     override fun onClick(bluetoothDevice: BluetoothDevice) {
         when (bluetoothDevice.bluetoothClass.deviceClass) {
             BluetoothClass.Device.PHONE_SMART -> {
-                mainActivity.connectToDevice(bluetoothDevice.address)
+                vModel.connectToDevice(bluetoothDevice, true)
             }
             else ->
                 requireContext().singleButtonAlertDialog(

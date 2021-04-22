@@ -17,7 +17,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 
-const val TAG = "peerMassage"
+const val TAG = "peerMessenger"
 
 const val selfUserDatabaseId = "0"
 const val PERMISSION_REQUEST_CODE = 110

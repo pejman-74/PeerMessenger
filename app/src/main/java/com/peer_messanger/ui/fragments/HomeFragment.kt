@@ -62,7 +62,7 @@ class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeIte
     }
 
     override fun onClick(device: Device) {
-        findNavController().navigate(HomeFragmentDirections.actionGlobalChatFragment(device))
+        findNavController().navigate(HomeFragmentDirections.actionGlobalChatFragment())
     }
 
     override fun getViewModel() = activityViewModels<MainViewModel>()

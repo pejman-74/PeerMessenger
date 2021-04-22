@@ -1,4 +1,4 @@
-package com.peer_messanger.data.wrap
+package com.peer_messanger.data.wrapper
 
 import java.util.concurrent.atomic.AtomicBoolean
 

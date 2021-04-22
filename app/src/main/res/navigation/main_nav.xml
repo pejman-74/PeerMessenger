@@ -18,11 +18,7 @@
         android:id="@+id/chatFragment"
         android:name="com.peer_messanger.ui.fragments.ChatFragment"
         android:label="fragment_chat"
-        tools:layout="@layout/fragment_chat" >
-        <argument
-            android:name="device"
-            app:argType="com.peer_messanger.data.model.Device" />
-    </fragment>
+        tools:layout="@layout/fragment_chat" />
     <fragment
         android:id="@+id/findingFragment"
         android:name="com.peer_messanger.ui.fragments.FindingFragment"

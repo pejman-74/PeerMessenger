@@ -6,10 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.activityViewModels
-import androidx.navigation.fragment.navArgs
+import androidx.lifecycle.asLiveData
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.peer_messanger.R
-import com.peer_messanger.data.wrap.BluetoothEventResource
+import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.databinding.FragmentChatBinding
 import com.peer_messanger.ui.activity.MainActivity
 import com.peer_messanger.ui.adapters.ChatRecyclerViewAdapter
@@ -20,19 +20,21 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
 
     private lateinit var mainActivity: MainActivity
     private lateinit var chatRecyclerViewAdapter: ChatRecyclerViewAdapter
-    private val args: ChatFragmentArgs by navArgs()
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         mainActivity = requireActivity() as MainActivity
 
-        mainActivity.supportActionBar?.title = args.device.name
+        mainActivity.supportActionBar?.title = vModel.lastConnectedDevice.name
 
         vBinding.btnSendMessage.isEnabled = false
         vBinding.tiMessage.doOnTextChanged { _, _, _, count ->
             vBinding.btnSendMessage.isEnabled = count > 0
         }
         vBinding.btnSendMessage.setOnClickListener {
-            mainActivity.sendMessage(vBinding.tiMessage.text.toString(), args.device.macAddress)
+            vModel.sendMessage(
+                vBinding.tiMessage.text.toString(),
+                vModel.lastConnectedDevice.address
+            )
             vBinding.tiMessage.text?.clear()
         }
         chatRecyclerViewAdapter = ChatRecyclerViewAdapter()
@@ -51,19 +53,14 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             vBinding.rvChat.smoothScrollToPosition(if (messages.isNotEmpty()) messages.size - 1 else 0)
         })
 
-        vModel.getDeviceWithMessages(args.device.macAddress)
+        vModel.getDeviceWithMessages(vModel.lastConnectedDevice.address)
 
-        vModel.bluetoothEventsEventResource.observe(viewLifecycleOwner, {
-            when (it) {
-                is BluetoothEventResource.DeviceConnected -> hideDisconnectBar()
+        vModel.connectionState.asLiveData().observe(viewLifecycleOwner, {
+            if (it is ConnectionEvents.Connected)
+                hideDisconnectBar()
+            if (it is ConnectionEvents.Disconnect)
+                showDisconnectBar()
 
-                is BluetoothEventResource.DeviceDisconnected -> showDisconnectBar()
-
-                BluetoothEventResource.DeviceConnecting -> {
-                    vBinding.btnChatDisconnectBarConnect.text =
-                        getString(R.string.connecting)
-                }
-            }
         })
 
     }
@@ -73,7 +70,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             getString(R.string.try_connect)
         vBinding.clChatUserDisconnectBar.visibility = View.VISIBLE
         vBinding.btnChatDisconnectBarConnect.setOnClickListener {
-            mainActivity.connectToDevice(args.device.macAddress)
+            vModel.connectToDevice(vModel.lastConnectedDevice, true)
         }
     }
 
