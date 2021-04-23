@@ -6,10 +6,11 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import com.peer_messanger.bluetoothchat.BluetoothChatServiceInterface
 import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.relationship.DeviceWithMessages
-import com.peer_messanger.data.repository.Repository
+import com.peer_messanger.data.repository.LocalRepositoryInterface
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.util.getCurrentUTCDateTime
 import com.peer_messanger.util.selfUserDatabaseId
@@ -19,8 +20,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor(private val repository: Repository) :
-    ViewModel() {
+class MainViewModel @Inject constructor(
+    private val localRepository: LocalRepositoryInterface,
+    private val chatService: BluetoothChatServiceInterface
+) : ViewModel() {
 
 
     /**
@@ -41,10 +44,10 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
 
 
     /**
-     * load all device with messages from db for showing into homeFragment
+     * load all device with messages from db
      * */
     val allDevicesWithMessages =
-        repository.getAllDevicesWithMessages()
+        localRepository.getAllDevicesWithMessages()
 
 
     /**
@@ -64,7 +67,7 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
                     createdTime = getCurrentUTCDateTime()
                 )
 
-                repository.saveMessage(receivedBluetoothMessage)
+                localRepository.saveMessage(receivedBluetoothMessage)
 
                 //send ack messages to connected device
                 sendAckMessage(receivedBluetoothMessage.id)
@@ -79,7 +82,7 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
     fun saveSendMessage(bluetoothMessage: BluetoothMessage) = viewModelScope.launch {
         if (bluetoothMessage.id.isBlank() || bluetoothMessage.body.isBlank() || bluetoothMessage.receiverDevice.isBlank())
             return@launch
-        repository.saveMessage(bluetoothMessage)
+        localRepository.saveMessage(bluetoothMessage)
     }
 
 
@@ -89,7 +92,7 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
             return@launch
         val device = Device(macAddress, name)
 
-        repository.saveDevice(device)
+        localRepository.saveDevice(device)
     }
 
 
@@ -98,13 +101,13 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
         viewModelScope.launch {
             if (messageId.isBlank())
                 return@launch
-            repository.setBluetoothMessageIsDelivered(messageId, isDelivered)
+            localRepository.setBluetoothMessageIsDelivered(messageId, isDelivered)
 
         }
 
 
-    fun getUnDeliveredMessages(macAddress: String) = viewModelScope.launch {
-        val messages = repository.getUnDeliveredMessages(macAddress)
+    fun processUnDeliveredMessages(macAddress: String) = viewModelScope.launch {
+        val messages = localRepository.getUnDeliveredMessages(macAddress)
         //send to connected device undelivered messages
         messages.forEach { message ->
             sendUnDeliverMessage(message)
@@ -123,12 +126,12 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
     }
 
     //send to connected device unacknowledged-messages
-    fun getUnacknowledgedMessages(macAddress: String) = viewModelScope.launch {
+    fun precessUnacknowledgedMessages(macAddress: String) = viewModelScope.launch {
 
-        val messages = repository.getUnacknowledgedMessages(macAddress)
+        val messages = localRepository.getUnacknowledgedMessages(macAddress)
         messages.forEach { message ->
             val isSent = sendAckMessage(message.id)
-            //set unacknowledged-messages status to acknowledged
+            //set message status
             if (isSent)
                 setBluetoothMessageIsDelivered(message.id, true)
         }
@@ -160,36 +163,37 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
     }
 
 
-    fun startChatService() = viewModelScope.launch { repository.startChatService() }
+    fun startChatService() = viewModelScope.launch { chatService.start() }
 
-    fun stopChatService() = viewModelScope.launch { repository.stopChatService() }
+    fun stopChatService() = viewModelScope.launch { chatService.stop() }
 
-    fun connectToDevice(device: BluetoothDevice, isSecure: Boolean) = viewModelScope.launch {
-        repository.connectToDevice(device, isSecure)
+    fun connectToDevice(device: BluetoothDevice) = viewModelScope.launch {
+        chatService.connect(device)
     }
 
-    private suspend fun sendMessageBt(message: String) = repository.sendMessage(message)
+    private suspend fun sendMessageBt(message: String) = chatService.sendMessage(message)
 
-    fun getPairedDevices(): List<BluetoothDevice> = repository.pairedDevices()
+    fun pairedDevices(): List<BluetoothDevice> = chatService.pairedDevices()
 
-    fun isDeviceSupportBT(): Boolean = repository.isDeviceSupportBluetooth()
+    fun isDeviceSupportBluetooth(): Boolean = chatService.isDeviceSupportBT()
 
-    fun enableBT(): Boolean = repository.enableBluetooth()
+    fun enableBT(): Boolean = chatService.enableBT()
 
-    fun btIsOn(): Boolean = repository.bluetoothIsOn()
+    fun btIsOn(): Boolean = chatService.bluetoothIsOn()
 
     lateinit var lastConnectedDevice: BluetoothDevice
 
-    val connectionState = repository.connectionState().map {
+    val connectionState = chatService.connectionState().map {
         if (it is ConnectionEvents.Connected)
             lastConnectedDevice = it.device
         it
     }
 
-    private val receivedMessages = repository.receivedMessages()
-    fun startScan() = repository.startDiscovery()
+    private val receivedMessages = chatService.receivedMessages()
 
-    val scanFlow = repository.discoveryDevices()
+    fun startScan() = chatService.startDiscovery()
+
+    val scanFlow = chatService.discoveryDevices()
 
     init {
         viewModelScope.launch {
@@ -213,14 +217,14 @@ class MainViewModel @Inject constructor(private val repository: Repository) :
                     when (it) {
                         is ConnectionEvents.Connected -> {
                             //save connected user to database
-                            lastConnectedDevice.also { device ->
+                            it.device.also { device ->
                                 if (device.address.isNotBlank() && !device.name.isNullOrBlank())
                                     saveDevice(device.address, device.name)
                             }
 
-                            getUnDeliveredMessages(lastConnectedDevice.address)
+                            processUnDeliveredMessages(it.device.address)
 
-                            getUnacknowledgedMessages(lastConnectedDevice.address)
+                            precessUnacknowledgedMessages(it.device.address)
                         }
                         is ConnectionEvents.Disconnect -> {
                         }

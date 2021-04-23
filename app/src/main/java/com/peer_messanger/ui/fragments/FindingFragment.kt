@@ -52,7 +52,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
         }
 
 
-        vModel.getPairedDevices().let {
+        vModel.pairedDevices().let {
             pairedRecyclerViewAdapter.setData(ArrayList(it))
         }
 
@@ -134,7 +134,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     override fun onClick(bluetoothDevice: BluetoothDevice) {
         when (bluetoothDevice.bluetoothClass.deviceClass) {
             BluetoothClass.Device.PHONE_SMART -> {
-                vModel.connectToDevice(bluetoothDevice, true)
+                vModel.connectToDevice(bluetoothDevice)
             }
             else ->
                 requireContext().singleButtonAlertDialog(

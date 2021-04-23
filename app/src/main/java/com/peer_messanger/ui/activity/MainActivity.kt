@@ -35,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         //config action bar with navController
         setupActionBarWithNavController(navController)
 
-        if (!vModel.isDeviceSupportBT()) {
+        if (!vModel.isDeviceSupportBluetooth()) {
             showLongToast(getString(R.string.device_not_support_bt))
             finish()
         }

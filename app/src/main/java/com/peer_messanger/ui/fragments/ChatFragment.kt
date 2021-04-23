@@ -70,7 +70,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             getString(R.string.try_connect)
         vBinding.clChatUserDisconnectBar.visibility = View.VISIBLE
         vBinding.btnChatDisconnectBarConnect.setOnClickListener {
-            vModel.connectToDevice(vModel.lastConnectedDevice, true)
+            vModel.connectToDevice(vModel.lastConnectedDevice)
         }
     }
 

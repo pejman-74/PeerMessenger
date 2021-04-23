@@ -1,13 +1,16 @@
 package com.peer_messanger.data.dao
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.test.filters.SmallTest
 import com.google.common.truth.Truth.assertThat
 import com.peer_messanger.data.local.database.AppDatabase
 import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.model.Device
+import com.peer_messanger.di.module.ChatServiceModule
+import com.peer_messanger.di.module.DatabaseModule
+import com.peer_messanger.di.module.RepositoryModule
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
+import dagger.hilt.android.testing.UninstallModules
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runBlockingTest
@@ -16,14 +19,12 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import javax.inject.Inject
-import javax.inject.Named
 
 @HiltAndroidTest
 @ExperimentalCoroutinesApi
-@SmallTest
+@UninstallModules(DatabaseModule::class, ChatServiceModule::class)
 class DaoTest {
     @Inject
-    @Named("testDB")
     lateinit var database: AppDatabase
 
     private lateinit var deviceDao: DeviceDao

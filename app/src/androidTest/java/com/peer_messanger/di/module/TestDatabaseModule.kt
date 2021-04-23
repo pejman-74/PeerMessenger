@@ -1,4 +1,4 @@
-package com.peer_messanger.data.di
+package com.peer_messanger.di.module
 
 import android.content.Context
 import androidx.room.Room
@@ -8,14 +8,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Named
-import javax.inject.Singleton
 
 @InstallIn(SingletonComponent::class)
 @Module
-object TestAppModule {
+object TestDatabaseModule {
 
-    @Named("testDB")
     @Provides
     fun provideInMemoryRoomDB(@ApplicationContext context: Context): AppDatabase =
         Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()

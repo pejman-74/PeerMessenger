@@ -6,6 +6,7 @@ import android.util.Log
 import com.peer_messanger.bluetoothchat.blueflow.BlueFlow
 import com.peer_messanger.bluetoothchat.blueflow.BlueFlowIO
 import com.peer_messanger.data.wrapper.ConnectionEvents
+import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.util.TAG
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -13,7 +14,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 @ExperimentalCoroutinesApi
-class BluetoothChatService(private val blueFlow: BlueFlow) {
+class BluetoothChatService(private val blueFlow: BlueFlow) : BluetoothChatServiceInterface {
 
     companion object {
         // Unique UUID for this application
@@ -46,10 +47,10 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
         }
     }
 
-    fun connectionState() = connectionState
+    override fun connectionState(): Flow<ConnectionEvents> = connectionState
 
 
-    fun receivedMessages(): Flow<String> = connectionState.flatMapLatest {
+    override fun receivedMessages(): Flow<String> = connectionState.flatMapLatest {
 
         //read byte arrays just when connected
         if (it is ConnectionEvents.Connected && blueFlowIO != null) {
@@ -58,7 +59,7 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
             emptyFlow()
     }
 
-    suspend fun start() {
+    override suspend fun start() {
 
         //starting a server for listening
         val serverSocket =
@@ -66,7 +67,7 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
         setBlueFlowIO(serverSocket)
     }
 
-    fun stop() {
+    override fun stop() {
         blueFlowIO?.closeConnections()
         blueFlowIO = null
     }
@@ -94,7 +95,7 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
         return false
     }
 
-    suspend fun connect(device: BluetoothDevice) {
+    override suspend fun connect(device: BluetoothDevice) {
 
         if (isDeviceEarlyConnected(device)) {
             _connectionState.emit(ConnectionEvents.Connected(device))
@@ -113,7 +114,7 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
         setBlueFlowIO(clientSocket)
     }
 
-    suspend fun sendMessage(message: String): Boolean {
+    override suspend fun sendMessage(message: String): Boolean {
         blueFlowIO?.let {
             return it.send(message)
         }
@@ -121,18 +122,19 @@ class BluetoothChatService(private val blueFlow: BlueFlow) {
         return false
     }
 
-    fun isDeviceSupportBT() = blueFlow.isBluetoothAvailable()
+    override fun isDeviceSupportBT(): Boolean = blueFlow.isBluetoothAvailable()
 
-    fun bluetoothIsOn() = blueFlow.isBluetoothEnabled()
+    override fun bluetoothIsOn(): Boolean = blueFlow.isBluetoothEnabled()
 
-    fun enableBT(): Boolean = blueFlow.enable()
+    override fun enableBT(): Boolean = blueFlow.enable()
 
-    fun startDiscovery() = blueFlow.startDiscovery()
+    override fun startDiscovery(): Boolean = blueFlow.startDiscovery()
 
-    fun discoveryDevices() = blueFlow.discoverDevices()
+    override fun discoveryDevices(): Flow<ScanResource> = blueFlow.discoverDevices()
 
-    fun pairedDevices(): List<BluetoothDevice> = blueFlow.bondedDevices()?.toList() ?: emptyList()
+    override fun pairedDevices(): List<BluetoothDevice> =
+        blueFlow.bondedDevices()?.toList() ?: emptyList()
 
-    fun bluetoothState(): Flow<Int> = blueFlow.bluetoothState()
+    override fun bluetoothState(): Flow<Int> = blueFlow.bluetoothState()
 
 }
