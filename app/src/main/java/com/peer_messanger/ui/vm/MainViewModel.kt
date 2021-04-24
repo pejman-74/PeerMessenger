@@ -1,8 +1,6 @@
 package com.peer_messanger.ui.vm
 
 import android.bluetooth.BluetoothDevice
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
@@ -15,11 +13,14 @@ import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.util.getCurrentUTCDateTime
 import com.peer_messanger.util.selfUserDatabaseId
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
+@ExperimentalCoroutinesApi
 class MainViewModel @Inject constructor(
     private val localRepository: LocalRepositoryInterface,
     private val chatService: BluetoothChatServiceInterface
@@ -27,19 +28,21 @@ class MainViewModel @Inject constructor(
 
 
     /**
-     * get specific device with messages from home-feed flow 'allDevicesWithMessages'
+     * get specific device with messages from home-feed flow [allDevicesWithMessages]
      * because on app lunched, all devices and messages got for show into homeFragment
      * */
-    private val _deviceWithMessages = MutableLiveData<DeviceWithMessages>()
-    val deviceWithMessages: LiveData<DeviceWithMessages> get() = _deviceWithMessages
+    private val deviceWithMessagesChanel = Channel<String>()
+    private val deviceWithMessagesFlow = deviceWithMessagesChanel.receiveAsFlow()
+
+    val deviceWithMessages: Flow<DeviceWithMessages?> =
+        deviceWithMessagesFlow.flatMapLatest { macAddress ->
+            allDevicesWithMessages.map { devWithMessage ->
+                devWithMessage.find { it.device.macAddress == macAddress }
+            }
+        }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     fun getDeviceWithMessages(macAddress: String) = viewModelScope.launch {
-
-        allDevicesWithMessages.collect { devicesWithMessages ->
-            devicesWithMessages.find { it.device.macAddress == macAddress }?.let {
-                _deviceWithMessages.postValue(it)
-            }
-        }
+        deviceWithMessagesChanel.send(macAddress)
     }
 
 
@@ -55,7 +58,7 @@ class MainViewModel @Inject constructor(
      * @param sederDeviceAddress ->sender mac address for save as messageOwner
      * After successfully saved, adding to readyToAcknowledgmentMessages for send ack message to sender
      * */
-    fun saveReceivedMessage(messageBody: String, sederDeviceAddress: String?) =
+    private fun saveReceivedMessage(messageBody: String, sederDeviceAddress: String?) =
         viewModelScope.launch {
             if (messageBody.isBlank() || sederDeviceAddress.isNullOrBlank())
                 return@launch
@@ -126,7 +129,7 @@ class MainViewModel @Inject constructor(
     }
 
     //send to connected device unacknowledged-messages
-    fun precessUnacknowledgedMessages(macAddress: String) = viewModelScope.launch {
+    private fun precessUnacknowledgedMessages(macAddress: String) = viewModelScope.launch {
 
         val messages = localRepository.getUnacknowledgedMessages(macAddress)
         messages.forEach { message ->

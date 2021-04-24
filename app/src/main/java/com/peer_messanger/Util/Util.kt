@@ -6,7 +6,9 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnLayout
+import androidx.fragment.app.FragmentActivity
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.shape.OffsetEdgeTreatment
@@ -121,3 +123,8 @@ fun String.toLocalTime(): String {
 fun getCurrentUTCDateTime() = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US)
     .apply { timeZone = TimeZone.getTimeZone("UTC") }.format(Date()) + "Z"
 
+fun FragmentActivity.appCompatActivity(): AppCompatActivity {
+    return runCatching {
+        this as AppCompatActivity
+    }.getOrThrow()
+}

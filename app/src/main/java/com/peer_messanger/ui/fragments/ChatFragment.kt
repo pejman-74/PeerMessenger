@@ -4,65 +4,81 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.asLiveData
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.lifecycle.lifecycleScope
 import com.peer_messanger.R
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.databinding.FragmentChatBinding
-import com.peer_messanger.ui.activity.MainActivity
 import com.peer_messanger.ui.adapters.ChatRecyclerViewAdapter
 import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.vm.MainViewModel
+import com.peer_messanger.util.appCompatActivity
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
 
+@ExperimentalCoroutinesApi
+@AndroidEntryPoint
 class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
 
-    private lateinit var mainActivity: MainActivity
-    private lateinit var chatRecyclerViewAdapter: ChatRecyclerViewAdapter
+    private val chatRecyclerViewAdapter by lazy { ChatRecyclerViewAdapter() }
+    private val currentConnectedDevice by lazy { vModel.lastConnectedDevice }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        mainActivity = requireActivity() as MainActivity
 
-        mainActivity.supportActionBar?.title = vModel.lastConnectedDevice.name
+        requireActivity().appCompatActivity().supportActionBar?.title =
+            currentConnectedDevice.name
 
-        vBinding.btnSendMessage.isEnabled = false
-        vBinding.tiMessage.doOnTextChanged { _, _, _, count ->
-            vBinding.btnSendMessage.isEnabled = count > 0
-        }
-        vBinding.btnSendMessage.setOnClickListener {
-            vModel.sendMessage(
-                vBinding.tiMessage.text.toString(),
-                vModel.lastConnectedDevice.address
-            )
-            vBinding.tiMessage.text?.clear()
-        }
-        chatRecyclerViewAdapter = ChatRecyclerViewAdapter()
+        setListeners()
+
+        setRecyclerView()
+
+        setObservers()
+
+
+    }
+
+    private fun setRecyclerView() {
         vBinding.rvChat.apply {
-            layoutManager = LinearLayoutManager(requireContext()).apply {
-                stackFromEnd = true
-            }
-            setHasFixedSize(true)
             adapter = chatRecyclerViewAdapter
         }
-        vModel.deviceWithMessages.observe(viewLifecycleOwner, { deviceWithMessages ->
-            val messages =
-                deviceWithMessages.receivedBluetoothMessages.plus(deviceWithMessages.sentBluetoothMessages)
-                    .sortedBy { it.createdTime }
-            chatRecyclerViewAdapter.setData(messages)
-            vBinding.rvChat.smoothScrollToPosition(if (messages.isNotEmpty()) messages.size - 1 else 0)
-        })
+    }
 
-        vModel.getDeviceWithMessages(vModel.lastConnectedDevice.address)
+    private fun setListeners() {
+        vBinding.btnSendMessage.setOnClickListener {
 
-        vModel.connectionState.asLiveData().observe(viewLifecycleOwner, {
-            if (it is ConnectionEvents.Connected)
-                hideDisconnectBar()
-            if (it is ConnectionEvents.Disconnect)
-                showDisconnectBar()
+            if (vBinding.tiMessage.text.isNullOrBlank())
+                return@setOnClickListener
 
-        })
+            vModel.sendMessage(vBinding.tiMessage.text.toString(), currentConnectedDevice.address)
 
+            vBinding.tiMessage.text?.clear()
+        }
+    }
+
+
+    private fun setObservers() {
+        lifecycleScope.launchWhenStarted {
+            vModel.deviceWithMessages.collect { deviceWithMessages ->
+                deviceWithMessages ?: return@collect
+                val messages =
+                    deviceWithMessages.receivedBluetoothMessages.plus(deviceWithMessages.sentBluetoothMessages)
+                        .sortedBy { it.createdTime }
+                chatRecyclerViewAdapter.setData(messages)
+                vBinding.rvChat.smoothScrollToPosition(if (messages.isNotEmpty()) messages.size - 1 else 0)
+            }
+        }
+        lifecycleScope.launchWhenStarted {
+            vModel.connectionState.collect {
+                if (it is ConnectionEvents.Connected)
+                    hideDisconnectBar()
+                if (it is ConnectionEvents.Disconnect)
+                    showDisconnectBar()
+            }
+        }
+
+        vModel.getDeviceWithMessages(currentConnectedDevice.address)
     }
 
     private fun showDisconnectBar() {
@@ -70,7 +86,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             getString(R.string.try_connect)
         vBinding.clChatUserDisconnectBar.visibility = View.VISIBLE
         vBinding.btnChatDisconnectBarConnect.setOnClickListener {
-            vModel.connectToDevice(vModel.lastConnectedDevice)
+            vModel.connectToDevice(currentConnectedDevice)
         }
     }
 
