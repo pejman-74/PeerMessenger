@@ -1,6 +1,6 @@
 package com.peer_messanger.bluetoothchat
 
-import android.bluetooth.BluetoothDevice
+import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.data.wrapper.ScanResource
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +14,7 @@ interface BluetoothChatServiceInterface {
 
     fun stop()
 
-    suspend fun connect(device: BluetoothDevice)
+    suspend fun connect(macAddress: String)
 
     suspend fun sendMessage(message: String): Boolean
 
@@ -28,7 +28,7 @@ interface BluetoothChatServiceInterface {
 
     fun discoveryDevices():Flow<ScanResource>
 
-    fun pairedDevices(): List<BluetoothDevice>
+    fun pairedDevices(): List<Device>
 
     fun bluetoothState(): Flow<Int>
 

@@ -9,15 +9,18 @@ import androidx.navigation.NavController
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupActionBarWithNavController
 import com.peer_messanger.R
+import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.databinding.ActivityMainBinding
 import com.peer_messanger.ui.fragments.HomeFragmentDirections
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.*
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 
 
+@ExperimentalCoroutinesApi
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
@@ -41,7 +44,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         //save self user to make relationShip
-        vModel.saveDevice(selfUserDatabaseId, "self")
+        vModel.saveDevice(Device(selfUserDatabaseId, "self"))
 
         setObservers()
     }
@@ -54,13 +57,16 @@ class MainActivity : AppCompatActivity() {
                     is ConnectionEvents.Connected -> {
                         //navigate to chat fragment
                         findNavController(R.id.fcv_main).navigate(
-                            HomeFragmentDirections.actionGlobalChatFragment()
+                            HomeFragmentDirections.actionGlobalChatFragment(it.device)
                         )
                     }
 
                     is ConnectionEvents.Disconnect -> {
-                        activityMainBinding.root.snackBar(it.deviceName + " connection was lost")
+                        activityMainBinding.root.snackBar(it.deviceName + getString(R.string.connection_was_lost))
                     }
+                    ConnectionEvents.ConnectionFailed -> activityMainBinding.root.snackBar(
+                        getString(R.string.connection_failed)
+                    )
                 }
             }
 

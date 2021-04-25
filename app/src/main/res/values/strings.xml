@@ -14,4 +14,7 @@
     <string name="app_cant_work_without_bt_on_lunch">This app can\'t work without bluetooth on lunch time</string>
     <string name="location_permission_is_necessary_to_search">Location permission is necessary to search</string>
     <string name="device_not_support_bt">This device does not support Bluetooth</string>
+    <string name="connection_was_lost">Connection was lost</string>
+    <string name="connection_failed">Connection failed</string>
+    <string name="connect_to_device">Connect to device</string>
 </resources>

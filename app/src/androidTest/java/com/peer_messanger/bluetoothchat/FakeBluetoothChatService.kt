@@ -1,63 +1,86 @@
 package com.peer_messanger.bluetoothchat
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.data.wrapper.ScanResource
-import kotlinx.coroutines.flow.Flow
+
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
 
 
-class FakeBluetoothChatService:BluetoothChatServiceInterface{
-    override fun connectionState(): Flow<ConnectionEvents> {
-        TODO("Not yet implemented")
+@ExperimentalCoroutinesApi
+class FakeBluetoothChatService : BluetoothChatServiceInterface {
+
+    private val connectionState = MutableSharedFlow<ConnectionEvents>()
+    private val fakeReceivedMessageChannel = Channel<String>()
+    private val bluetoothState = MutableStateFlow(BluetoothAdapter.STATE_ON)
+    private var isStarted = false
+    private var deviceHasBluetooth = true
+
+    fun setDeviceHasBluetooth(has: Boolean) {
+        bluetoothState.value = BluetoothAdapter.STATE_DISCONNECTED
+        deviceHasBluetooth = has
     }
 
-    override fun receivedMessages(): Flow<String> {
-        TODO("Not yet implemented")
+    suspend fun sendFakeMessage() {
+        fakeReceivedMessageChannel.send("Message")
     }
+
+
+    override fun connectionState(): Flow<ConnectionEvents> = connectionState
+
+    override fun receivedMessages(): Flow<String> = fakeReceivedMessageChannel.receiveAsFlow()
+
 
     override suspend fun start() {
-        TODO("Not yet implemented")
+        isStarted = true
     }
 
     override fun stop() {
-        TODO("Not yet implemented")
+        isStarted = false
     }
 
     override suspend fun connect(device: BluetoothDevice) {
-        TODO("Not yet implemented")
+        connectionState.emit(ConnectionEvents.Connected(device))
     }
 
     override suspend fun sendMessage(message: String): Boolean {
-        TODO("Not yet implemented")
+        return isStarted
     }
 
-    override fun isDeviceSupportBT(): Boolean {
-        TODO("Not yet implemented")
-    }
+    override fun isDeviceSupportBT(): Boolean = deviceHasBluetooth
 
     override fun bluetoothIsOn(): Boolean {
-        TODO("Not yet implemented")
+        return bluetoothState.value == BluetoothAdapter.STATE_ON
     }
 
     override fun enableBT(): Boolean {
-        TODO("Not yet implemented")
+        bluetoothState.value = BluetoothAdapter.STATE_ON
+        return true
     }
 
     override fun startDiscovery(): Boolean {
-        TODO("Not yet implemented")
+        return true
     }
 
-    override fun discoveryDevices(): Flow<ScanResource> {
-        TODO("Not yet implemented")
+
+    override fun discoveryDevices(): Flow<ScanResource> = channelFlow {
+        offer(ScanResource.DiscoveryStarted)
+       // val fakeBluetoothDevice = mockk<BluetoothDevice>()
+        //offer(ScanResource.DeviceFound(fakeBluetoothDevice))
+        offer(ScanResource.DiscoveryFinished)
     }
 
     override fun pairedDevices(): List<BluetoothDevice> {
-        TODO("Not yet implemented")
+       // val fakeBluetoothDevice = mockk<BluetoothDevice>()
+
+        return emptyList()
     }
 
-    override fun bluetoothState(): Flow<Int> {
-        TODO("Not yet implemented")
-    }
+
+    override fun bluetoothState(): Flow<Int> = bluetoothState
 
 
 }

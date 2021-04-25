@@ -5,9 +5,11 @@ import android.bluetooth.BluetoothSocket
 import android.util.Log
 import com.peer_messanger.bluetoothchat.blueflow.BlueFlow
 import com.peer_messanger.bluetoothchat.blueflow.BlueFlowIO
+import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.util.TAG
+import com.peer_messanger.util.toDevice
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -80,7 +82,7 @@ class BluetoothChatService(private val blueFlow: BlueFlow) : BluetoothChatServic
     private suspend fun setBlueFlowIO(bluetoothSocket: BluetoothSocket) {
         runCatching {
             blueFlowIO = blueFlow.getIO(bluetoothSocket)
-            _connectionState.emit(ConnectionEvents.Connected(bluetoothSocket.remoteDevice))
+            _connectionState.emit(ConnectionEvents.Connected(bluetoothSocket.remoteDevice.toDevice()))
         }.onFailure {
             _connectionState.emit(ConnectionEvents.Disconnect(bluetoothSocket.remoteDevice.name))
         }
@@ -95,10 +97,14 @@ class BluetoothChatService(private val blueFlow: BlueFlow) : BluetoothChatServic
         return false
     }
 
-    override suspend fun connect(device: BluetoothDevice) {
-
+    override suspend fun connect(macAddress: String) {
+        val device = blueFlow.getBluetoothDevice(macAddress)
+        if (device == null) {
+            _connectionState.emit(ConnectionEvents.ConnectionFailed)
+            return
+        }
         if (isDeviceEarlyConnected(device)) {
-            _connectionState.emit(ConnectionEvents.Connected(device))
+            _connectionState.emit(ConnectionEvents.Connected(device.toDevice()))
             return
         }
 
@@ -132,8 +138,8 @@ class BluetoothChatService(private val blueFlow: BlueFlow) : BluetoothChatServic
 
     override fun discoveryDevices(): Flow<ScanResource> = blueFlow.discoverDevices()
 
-    override fun pairedDevices(): List<BluetoothDevice> =
-        blueFlow.bondedDevices()?.toList() ?: emptyList()
+    override fun pairedDevices(): List<Device> =
+        blueFlow.bondedDevices()?.map { it.toDevice() } ?: emptyList()
 
     override fun bluetoothState(): Flow<Int> = blueFlow.bluetoothState()
 

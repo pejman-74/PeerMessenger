@@ -1,6 +1,5 @@
 package com.peer_messanger.ui.vm
 
-import android.bluetooth.BluetoothDevice
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
@@ -90,11 +89,7 @@ class MainViewModel @Inject constructor(
 
 
     //Save connected devices
-    fun saveDevice(macAddress: String, name: String) = viewModelScope.launch {
-        if (macAddress.isBlank() || name.isBlank())
-            return@launch
-        val device = Device(macAddress, name)
-
+    fun saveDevice(device: Device) = viewModelScope.launch {
         localRepository.saveDevice(device)
     }
 
@@ -170,13 +165,13 @@ class MainViewModel @Inject constructor(
 
     fun stopChatService() = viewModelScope.launch { chatService.stop() }
 
-    fun connectToDevice(device: BluetoothDevice) = viewModelScope.launch {
-        chatService.connect(device)
+    fun connectToDevice(macAddress: String) = viewModelScope.launch {
+        chatService.connect(macAddress)
     }
 
     private suspend fun sendMessageBt(message: String) = chatService.sendMessage(message)
 
-    fun pairedDevices(): List<BluetoothDevice> = chatService.pairedDevices()
+    fun pairedDevices(): List<Device> = chatService.pairedDevices()
 
     fun isDeviceSupportBluetooth(): Boolean = chatService.isDeviceSupportBT()
 
@@ -184,7 +179,7 @@ class MainViewModel @Inject constructor(
 
     fun btIsOn(): Boolean = chatService.bluetoothIsOn()
 
-    lateinit var lastConnectedDevice: BluetoothDevice
+    lateinit var lastConnectedDevice: Device
 
     val connectionState = chatService.connectionState().map {
         if (it is ConnectionEvents.Connected)
@@ -209,7 +204,7 @@ class MainViewModel @Inject constructor(
                             setBluetoothMessageIsDelivered(messageId, true)
                     } else {
                         //save received message to db
-                        saveReceivedMessage(it, lastConnectedDevice.address)
+                        saveReceivedMessage(it, lastConnectedDevice.macAddress)
                     }
                 }
 
@@ -217,22 +212,17 @@ class MainViewModel @Inject constructor(
 
             launch {
                 connectionState.collect {
-                    when (it) {
-                        is ConnectionEvents.Connected -> {
-                            //save connected user to database
-                            it.device.also { device ->
-                                if (device.address.isNotBlank() && !device.name.isNullOrBlank())
-                                    saveDevice(device.address, device.name)
-                            }
-
-                            processUnDeliveredMessages(it.device.address)
-
-                            precessUnacknowledgedMessages(it.device.address)
+                    if (it is ConnectionEvents.Connected) {
+                        //save connected user to database
+                        it.device.also { device ->
+                            if (device.macAddress.isNotBlank() && !device.name.isNullOrBlank())
+                                saveDevice(device)
                         }
-                        is ConnectionEvents.Disconnect -> {
-                        }
+
+                        processUnDeliveredMessages(it.device.macAddress)
+
+                        precessUnacknowledgedMessages(it.device.macAddress)
                     }
-
                 }
             }
 

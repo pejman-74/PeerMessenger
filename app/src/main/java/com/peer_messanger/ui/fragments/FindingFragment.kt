@@ -2,8 +2,6 @@ package com.peer_messanger.ui.fragments
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothClass
-import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -17,6 +15,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.peer_messanger.R
+import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.databinding.FragmentFindingBinding
 import com.peer_messanger.ui.activity.MainActivity
@@ -26,10 +25,12 @@ import com.peer_messanger.ui.listener.BluetoothDeviceItemListener
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.PERMISSION_REQUEST_CODE
 import com.peer_messanger.util.singleButtonAlertDialog
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 
+@ExperimentalCoroutinesApi
 class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     BluetoothDeviceItemListener {
 
@@ -37,7 +38,6 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     private lateinit var mainActivity: MainActivity
     private lateinit var availableRecyclerViewAdapter: FindingRecyclerViewAdapter
     lateinit var pairedRecyclerViewAdapter: FindingRecyclerViewAdapter
-
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -53,7 +53,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
 
 
         vModel.pairedDevices().let {
-            pairedRecyclerViewAdapter.setData(ArrayList(it))
+            pairedRecyclerViewAdapter.submitList(ArrayList(it))
         }
 
 
@@ -69,7 +69,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
         vBinding.pfabMakeVisible.setOnClickListener {
             makeVisible()
         }
-        val foundedDevices = ArrayList<BluetoothDevice>()
+        val foundedDevices = ArrayList<Device>()
 
         lifecycleScope.launch {
             vModel.scanFlow.collect {
@@ -77,7 +77,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
                     is ScanResource.DiscoveryStarted -> {
                         vBinding.pfabSearch.showLoadingAnimation(true)
                         foundedDevices.clear()
-                        availableRecyclerViewAdapter.setData(ArrayList(foundedDevices))
+                        availableRecyclerViewAdapter.submitList(ArrayList(foundedDevices))
                     }
                     is ScanResource.DiscoveryFinished -> {
                         vBinding.pfabSearch.showLoadingAnimation(false)
@@ -85,7 +85,7 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
                     is ScanResource.DeviceFound -> {
                         if (it.device !in foundedDevices) {
                             foundedDevices.add(it.device)
-                            availableRecyclerViewAdapter.setData(ArrayList(foundedDevices))
+                            availableRecyclerViewAdapter.submitList(ArrayList(foundedDevices))
                         }
                     }
                 }
@@ -131,18 +131,14 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
         return vBinding.root
     }
 
-    override fun onClick(bluetoothDevice: BluetoothDevice) {
-        when (bluetoothDevice.bluetoothClass.deviceClass) {
-            BluetoothClass.Device.PHONE_SMART -> {
-                vModel.connectToDevice(bluetoothDevice)
-            }
-            else ->
-                requireContext().singleButtonAlertDialog(
-                    getString(R.string.inappropriate_device_select),
-                    getString(R.string.ok)
-                )
-        }
-
+    override fun onClick(device: Device) {
+        if (device.isSmartPhone)
+            vModel.connectToDevice(device.macAddress)
+        else
+            requireContext().singleButtonAlertDialog(
+                getString(R.string.inappropriate_device_select),
+                getString(R.string.ok)
+            )
     }
 
     //make bluetooth visible for other devices

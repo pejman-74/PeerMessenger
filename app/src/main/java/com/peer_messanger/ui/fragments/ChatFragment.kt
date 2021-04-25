@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.navArgs
 import com.peer_messanger.R
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.databinding.FragmentChatBinding
@@ -22,13 +23,13 @@ import kotlinx.coroutines.flow.collect
 class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
 
     private val chatRecyclerViewAdapter by lazy { ChatRecyclerViewAdapter() }
-    private val currentConnectedDevice by lazy { vModel.lastConnectedDevice }
+    private val args: ChatFragmentArgs by navArgs()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         requireActivity().appCompatActivity().supportActionBar?.title =
-            currentConnectedDevice.name
+            args.device.name
 
         setListeners()
 
@@ -51,7 +52,10 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             if (vBinding.tiMessage.text.isNullOrBlank())
                 return@setOnClickListener
 
-            vModel.sendMessage(vBinding.tiMessage.text.toString(), currentConnectedDevice.address)
+            vModel.sendMessage(
+                vBinding.tiMessage.text.toString(),
+                args.device.macAddress
+            )
 
             vBinding.tiMessage.text?.clear()
         }
@@ -78,7 +82,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             }
         }
 
-        vModel.getDeviceWithMessages(currentConnectedDevice.address)
+        vModel.getDeviceWithMessages(args.device.macAddress)
     }
 
     private fun showDisconnectBar() {
@@ -86,7 +90,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             getString(R.string.try_connect)
         vBinding.clChatUserDisconnectBar.visibility = View.VISIBLE
         vBinding.btnChatDisconnectBarConnect.setOnClickListener {
-            vModel.connectToDevice(currentConnectedDevice)
+            vModel.connectToDevice(args.device.macAddress)
         }
     }
 

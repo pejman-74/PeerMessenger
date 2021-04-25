@@ -1,7 +1,7 @@
 package com.peer_messanger.ui.listener
 
-import android.bluetooth.BluetoothDevice
+import com.peer_messanger.data.model.Device
 
 interface BluetoothDeviceItemListener {
-    fun onClick(bluetoothDevice: BluetoothDevice)
+    fun onClick(device: Device)
 }

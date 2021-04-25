@@ -1,5 +1,7 @@
 package com.peer_messanger.util
 
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.view.Gravity
 import android.view.View
@@ -15,6 +17,7 @@ import com.google.android.material.shape.OffsetEdgeTreatment
 import com.google.android.material.shape.TriangleEdgeTreatment
 import com.google.android.material.snackbar.Snackbar
 import com.peer_messanger.R
+import com.peer_messanger.data.model.Device
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,6 +26,9 @@ const val TAG = "peerMessenger"
 
 const val selfUserDatabaseId = "0"
 const val PERMISSION_REQUEST_CODE = 110
+
+fun BluetoothDevice.toDevice(): Device =
+    Device(address, name, bluetoothClass.deviceClass == BluetoothClass.Device.PHONE_SMART)
 
 fun Context.singleButtonAlertDialog(
     message: String,

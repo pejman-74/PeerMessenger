@@ -15,7 +15,9 @@ import com.peer_messanger.ui.adapters.HomeRecyclerViewItem
 import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.listener.HomeItemListener
 import com.peer_messanger.ui.vm.MainViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@ExperimentalCoroutinesApi
 class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeItemListener {
 
     lateinit var homeRecyclerViewAdapter: HomeRecyclerViewAdapter
@@ -29,7 +31,6 @@ class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeIte
 
         homeRecyclerViewAdapter = HomeRecyclerViewAdapter(this)
         vBinding.rvHome.apply {
-            layoutManager = LinearLayoutManager(requireContext())
             adapter = homeRecyclerViewAdapter
         }
 
@@ -62,7 +63,7 @@ class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeIte
     }
 
     override fun onClick(device: Device) {
-        findNavController().navigate(HomeFragmentDirections.actionGlobalChatFragment())
+        findNavController().navigate(HomeFragmentDirections.actionGlobalChatFragment(device))
     }
 
     override fun getViewModel() = activityViewModels<MainViewModel>()

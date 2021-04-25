@@ -10,6 +10,7 @@ import android.text.TextUtils
 import android.util.Log
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.data.wrapper.ScanResource
+import com.peer_messanger.util.toDevice
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -122,9 +123,9 @@ class BlueFlow constructor(val context: Context) {
                 when (intent?.action) {
                     BluetoothDevice.ACTION_FOUND -> {
                         Log.i("BlueFlowLib", "FOUND DEVICE")
-                        val device =
+                        val bluetoothDevice =
                             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE) as BluetoothDevice?
-                        device?.let { offer(ScanResource.DeviceFound(device)) }
+                        bluetoothDevice?.let { offer(ScanResource.DeviceFound(bluetoothDevice.toDevice())) }
                     }
                     BluetoothAdapter.ACTION_DISCOVERY_STARTED -> {
                         offer(ScanResource.DiscoveryStarted)
