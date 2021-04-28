@@ -32,7 +32,7 @@ class FakeBluetoothChatService : BluetoothChatServiceInterface {
     }
 
     suspend fun sendFakeMessage() {
-        fakeReceivedMessageChannel.send("Message")
+        fakeReceivedMessageChannel.send("{ id:'id',body:'hello' }")
     }
 
 

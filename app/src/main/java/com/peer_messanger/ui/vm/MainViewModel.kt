@@ -96,13 +96,13 @@ class MainViewModel @Inject constructor(
 
 
     //when ack-message received,used this function to set message isDelivered property in db
-    fun setBluetoothMessageIsDelivered(messageId: String, isDelivered: Boolean) =
+    private fun setBluetoothMessageIsDelivered(messageId: String, isDelivered: Boolean) =
         viewModelScope.launch(mainCoroutineDispatcher) {
             localRepository.setBluetoothMessageIsDelivered(messageId, isDelivered)
         }
 
 
-    fun processUnDeliveredMessages(macAddress: String) =
+    private fun processUnDeliveredMessages(macAddress: String) =
         viewModelScope.launch(mainCoroutineDispatcher) {
             val messages = localRepository.getUnDeliveredMessages(macAddress)
             //send to connected device undelivered messages
@@ -128,19 +128,21 @@ class MainViewModel @Inject constructor(
 
             val messages = localRepository.getUnacknowledgedMessages(macAddress)
             messages.forEach { message ->
-                val isSent = sendAckMessage(message.id)
-                //set message status
-                if (isSent)
-                    setBluetoothMessageIsDelivered(message.id, true)
+                sendAckMessage(message.id)
             }
 
         }
 
-    private suspend fun sendAckMessage(messageId: String): Boolean {
+    private suspend fun sendAckMessage(messageId: String) {
         //create ack message
         val ackMessage = "ack=$messageId"
 
-        return sendMessageBt(ackMessage)
+        //send ack message
+        val isSent = sendMessageBt(ackMessage)
+
+        //set message status
+        if (isSent)
+            setBluetoothMessageIsDelivered(messageId, true)
     }
 
     fun sendMessage(messageBody: String, macAddress: String) =
@@ -180,7 +182,7 @@ class MainViewModel @Inject constructor(
 
     fun btIsOn(): Boolean = chatService.bluetoothIsOn()
 
-    lateinit var lastConnectedDevice: Device
+    private lateinit var lastConnectedDevice: Device
 
     val connectionState = chatService.connectionState().map {
         if (it is ConnectionEvents.Connected)

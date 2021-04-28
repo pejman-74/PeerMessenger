@@ -4,6 +4,7 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.test.filters.SmallTest
 import com.google.common.truth.Truth.assertThat
 import com.peer_messanger.bluetoothchat.BluetoothChatServiceInterface
+import com.peer_messanger.bluetoothchat.FakeBluetoothChatService
 import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.repository.LocalRepositoryInterface
 import com.peer_messanger.di.module.ChatServiceModule
@@ -28,13 +29,10 @@ import javax.inject.Inject
 class MainViewModelTest {
 
 
-    private val macAddress = "macAddress"
-    private val deviceName = "android device"
-    private val gsonMessageBody = "{ id:'id',body:'hello' }"
     private val receivedBtMessage =
-        BluetoothMessage("id", "body", macAddress, "0", "create time", false)
+        BluetoothMessage("id", "body", "macAddress", "0", "create time", false)
     private val sentBtMessage =
-        BluetoothMessage("id", "body", "0", macAddress, "create time", false)
+        BluetoothMessage("id", "body", "0", "macAddress", "create time", false)
 
 
     private lateinit var mainViewModel: MainViewModel
@@ -56,6 +54,8 @@ class MainViewModelTest {
     val instantExecutorRule = InstantTaskExecutorRule()
 
 
+    private val fakeBluetoothChatService get() = chatServiceInterface as FakeBluetoothChatService
+
     @Before
     fun setUp() {
         hiltRule.inject()
@@ -74,7 +74,9 @@ class MainViewModelTest {
 
         mainViewModel.connectToDevice(pairedDevice.macAddress)
 
-        assertThat(mainViewModel.allDevicesWithMessages.first().first().device).isNotNull()
+        val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
+
+        assertThat(firstDeviceWithMessages.device).isNotNull()
 
     }
 
@@ -89,27 +91,69 @@ class MainViewModelTest {
 
             mainViewModel.connectToDevice(pairedDevice.macAddress)
 
+            val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
 
-            mainViewModel.allDevicesWithMessages.first().let {
-                assertThat(it.first().sentBluetoothMessages.first().isDelivered).isTrue()
-            }
+            assertThat(firstDeviceWithMessages.sentBluetoothMessages.first().isDelivered).isTrue()
 
-    }
+        }
 
     @Test
     fun whenConnectedToDevice_shouldSendUnacknowledgedMessages() =
         coroutineDispatcher.runBlockingTest {
-            //save undelivered message
+            //save Unacknowledged message
             mainViewModel.saveSendMessage(receivedBtMessage)
 
             val pairedDevice = mainViewModel.pairedDevices().first()
 
             mainViewModel.connectToDevice(pairedDevice.macAddress)
 
-            assertThat(
-                mainViewModel.allDevicesWithMessages.first()
-                    .first().receivedBluetoothMessages.first().isDelivered
-            ).isEqualTo(true)
+            val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
 
+            assertThat(firstDeviceWithMessages.receivedBluetoothMessages.first().isDelivered).isEqualTo(
+                true
+            )
+
+        }
+
+    @Test
+    fun sendMessageToConnectedDevice() = coroutineDispatcher.runBlockingTest {
+        val pairedDevice = mainViewModel.pairedDevices().first()
+
+        mainViewModel.connectToDevice(pairedDevice.macAddress)
+
+        mainViewModel.sendMessage("messageBody", pairedDevice.macAddress)
+
+        val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
+
+        assertThat(firstDeviceWithMessages.sentBluetoothMessages.first().body).isEqualTo("messageBody")
+
+    }
+
+    @Test
+    fun saveReceivedMessageInToDb() = coroutineDispatcher.runBlockingTest {
+
+        val pairedDevice = mainViewModel.pairedDevices().first()
+
+        mainViewModel.connectToDevice(pairedDevice.macAddress)
+
+        fakeBluetoothChatService.sendFakeMessage()
+
+        val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
+
+        assertThat(firstDeviceWithMessages.receivedBluetoothMessages.first().body).isEqualTo("hello")
+    }
+
+    @Test
+    fun sendAckMessageToReceivedMessage() = coroutineDispatcher.runBlockingTest {
+
+        val pairedDevice = mainViewModel.pairedDevices().first()
+
+        mainViewModel.connectToDevice(pairedDevice.macAddress)
+
+        fakeBluetoothChatService.sendFakeMessage()
+
+        val firstDeviceWithMessages = mainViewModel.allDevicesWithMessages.first().first()
+
+        assertThat(firstDeviceWithMessages.receivedBluetoothMessages.first().isDelivered).isTrue()
     }
 }
