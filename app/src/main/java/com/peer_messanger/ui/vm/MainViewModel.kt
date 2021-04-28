@@ -12,6 +12,7 @@ import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.util.getCurrentUTCDateTime
 import com.peer_messanger.util.selfUserDatabaseId
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
@@ -22,7 +23,8 @@ import javax.inject.Inject
 @ExperimentalCoroutinesApi
 class MainViewModel @Inject constructor(
     private val localRepository: LocalRepositoryInterface,
-    private val chatService: BluetoothChatServiceInterface
+    private val chatService: BluetoothChatServiceInterface,
+    private val mainCoroutineDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
 
@@ -40,7 +42,7 @@ class MainViewModel @Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    fun getDeviceWithMessages(macAddress: String) = viewModelScope.launch {
+    fun getDeviceWithMessages(macAddress: String) = viewModelScope.launch(mainCoroutineDispatcher) {
         deviceWithMessagesChanel.send(macAddress)
     }
 
@@ -58,7 +60,7 @@ class MainViewModel @Inject constructor(
      * After successfully saved, adding to readyToAcknowledgmentMessages for send ack message to sender
      * */
     private fun saveReceivedMessage(messageBody: String, sederDeviceAddress: String?) =
-        viewModelScope.launch {
+        viewModelScope.launch(mainCoroutineDispatcher) {
             if (messageBody.isBlank() || sederDeviceAddress.isNullOrBlank())
                 return@launch
             try {
@@ -81,42 +83,39 @@ class MainViewModel @Inject constructor(
 
 
     //save user sent-message
-    fun saveSendMessage(bluetoothMessage: BluetoothMessage) = viewModelScope.launch {
-        if (bluetoothMessage.id.isBlank() || bluetoothMessage.body.isBlank() || bluetoothMessage.receiverDevice.isBlank())
-            return@launch
-        localRepository.saveMessage(bluetoothMessage)
-    }
+    fun saveSendMessage(bluetoothMessage: BluetoothMessage) =
+        viewModelScope.launch(mainCoroutineDispatcher) {
+            localRepository.saveMessage(bluetoothMessage)
+        }
 
 
     //Save connected devices
-    fun saveDevice(device: Device) = viewModelScope.launch {
+    fun saveDevice(device: Device) = viewModelScope.launch(mainCoroutineDispatcher) {
         localRepository.saveDevice(device)
     }
 
 
     //when ack-message received,used this function to set message isDelivered property in db
     fun setBluetoothMessageIsDelivered(messageId: String, isDelivered: Boolean) =
-        viewModelScope.launch {
-            if (messageId.isBlank())
-                return@launch
+        viewModelScope.launch(mainCoroutineDispatcher) {
             localRepository.setBluetoothMessageIsDelivered(messageId, isDelivered)
-
         }
 
 
-    fun processUnDeliveredMessages(macAddress: String) = viewModelScope.launch {
-        val messages = localRepository.getUnDeliveredMessages(macAddress)
-        //send to connected device undelivered messages
-        messages.forEach { message ->
-            sendUnDeliverMessage(message)
-        }
+    fun processUnDeliveredMessages(macAddress: String) =
+        viewModelScope.launch(mainCoroutineDispatcher) {
+            val messages = localRepository.getUnDeliveredMessages(macAddress)
+            //send to connected device undelivered messages
+            messages.forEach { message ->
+                sendUnDeliverMessage(message)
+            }
 
-    }
+        }
 
     private fun sendUnDeliverMessage(bluetoothMessage: BluetoothMessage) {
         //convert to gson for make serializable easier
         val gsonStringMessage = Gson().toJson(bluetoothMessage)
-        viewModelScope.launch {
+        viewModelScope.launch(mainCoroutineDispatcher) {
             val isSent = sendMessageBt(gsonStringMessage)
             if (isSent)
                 setBluetoothMessageIsDelivered(bluetoothMessage.id, true)
@@ -124,17 +123,18 @@ class MainViewModel @Inject constructor(
     }
 
     //send to connected device unacknowledged-messages
-    private fun precessUnacknowledgedMessages(macAddress: String) = viewModelScope.launch {
+    private fun precessUnacknowledgedMessages(macAddress: String) =
+        viewModelScope.launch(mainCoroutineDispatcher) {
 
-        val messages = localRepository.getUnacknowledgedMessages(macAddress)
-        messages.forEach { message ->
-            val isSent = sendAckMessage(message.id)
-            //set message status
-            if (isSent)
-                setBluetoothMessageIsDelivered(message.id, true)
+            val messages = localRepository.getUnacknowledgedMessages(macAddress)
+            messages.forEach { message ->
+                val isSent = sendAckMessage(message.id)
+                //set message status
+                if (isSent)
+                    setBluetoothMessageIsDelivered(message.id, true)
+            }
+
         }
-
-    }
 
     private suspend fun sendAckMessage(messageId: String): Boolean {
         //create ack message
@@ -143,29 +143,30 @@ class MainViewModel @Inject constructor(
         return sendMessageBt(ackMessage)
     }
 
-    fun sendMessage(messageBody: String, macAddress: String) {
+    fun sendMessage(messageBody: String, macAddress: String) =
+        viewModelScope.launch(mainCoroutineDispatcher) {
 
-        //create a BluetoothMessage
-        val message = BluetoothMessage(
-            getCurrentUTCDateTime(), messageBody, selfUserDatabaseId, macAddress,
-            getCurrentUTCDateTime(), false
-        )
-        //save message to db
-        saveSendMessage(message)
-        //convert to gson for make serializable easier
-        val gsonStringMessage = Gson().toJson(message)
-        viewModelScope.launch {
+            //create a BluetoothMessage
+            val message = BluetoothMessage(
+                getCurrentUTCDateTime(), messageBody, selfUserDatabaseId, macAddress,
+                getCurrentUTCDateTime(), false
+            )
+            //save message to db
+            saveSendMessage(message)
+            //convert to gson for make serializable easier
+            val gsonStringMessage = Gson().toJson(message)
+
             sendMessageBt(gsonStringMessage)
+
+
         }
 
-    }
 
+    fun startChatService() = viewModelScope.launch(mainCoroutineDispatcher) { chatService.start() }
 
-    fun startChatService() = viewModelScope.launch { chatService.start() }
+    fun stopChatService() = viewModelScope.launch(mainCoroutineDispatcher) { chatService.stop() }
 
-    fun stopChatService() = viewModelScope.launch { chatService.stop() }
-
-    fun connectToDevice(macAddress: String) = viewModelScope.launch {
+    fun connectToDevice(macAddress: String) = viewModelScope.launch(mainCoroutineDispatcher) {
         chatService.connect(macAddress)
     }
 
@@ -193,41 +194,38 @@ class MainViewModel @Inject constructor(
 
     val scanFlow = chatService.discoveryDevices()
 
+
     init {
-        viewModelScope.launch {
-            launch {
-                receivedMessages.collect {
-                    if (it.startsWith("ack=")) {
-                        val messageId = it.substringAfter("=")
-                        //set message is IsDelivered true
-                        if (messageId.isNotBlank())
-                            setBluetoothMessageIsDelivered(messageId, true)
-                    } else {
-                        //save received message to db
-                        saveReceivedMessage(it, lastConnectedDevice.macAddress)
-                    }
-                }
 
-            }
-
-            launch {
-                connectionState.collect {
-                    if (it is ConnectionEvents.Connected) {
-                        //save connected user to database
-                        it.device.also { device ->
-                            if (device.macAddress.isNotBlank() && !device.name.isNullOrBlank())
-                                saveDevice(device)
-                        }
-
-                        processUnDeliveredMessages(it.device.macAddress)
-
-                        precessUnacknowledgedMessages(it.device.macAddress)
-                    }
+        viewModelScope.launch(mainCoroutineDispatcher) {
+            receivedMessages.collect {
+                if (it.startsWith("ack=")) {
+                    val messageId = it.substringAfter("=")
+                    //set message is IsDelivered true
+                    if (messageId.isNotBlank())
+                        setBluetoothMessageIsDelivered(messageId, true)
+                } else {
+                    //save received message to db
+                    saveReceivedMessage(it, lastConnectedDevice.macAddress)
                 }
             }
 
         }
 
+        viewModelScope.launch(mainCoroutineDispatcher) {
+            connectionState.collect {
+                if (it is ConnectionEvents.Connected) {
+                    //save connected user to database
+                    saveDevice(it.device)
+
+                    processUnDeliveredMessages(it.device.macAddress)
+                    precessUnacknowledgedMessages(it.device.macAddress)
+                }
+            }
+        }
+
+
     }
+
 
 }
