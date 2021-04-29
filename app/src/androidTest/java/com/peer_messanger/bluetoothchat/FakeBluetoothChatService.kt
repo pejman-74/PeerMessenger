@@ -22,6 +22,9 @@ class FakeBluetoothChatService : BluetoothChatServiceInterface {
     private var deviceHasBluetooth = true
     private var hasPairedDevice = false
 
+    fun setBluetoothStatus(status: Int) {
+        bluetoothState.value = status
+    }
 
     fun setHasPairedDevice(has: Boolean) {
         hasPairedDevice = has

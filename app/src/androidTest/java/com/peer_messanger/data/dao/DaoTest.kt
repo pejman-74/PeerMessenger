@@ -2,13 +2,11 @@ package com.peer_messanger.data.dao
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.google.common.truth.Truth.assertThat
-import com.peer_messanger.data.model.BluetoothMessage
-import com.peer_messanger.data.model.Device
-import com.peer_messanger.di.module.ChatServiceModule
-import com.peer_messanger.di.module.DatabaseModule
+import com.peer_messanger.fakeDevices
+import com.peer_messanger.receivedBtMessage
+import com.peer_messanger.sentBtMessage
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.UninstallModules
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runBlockingTest
@@ -19,7 +17,6 @@ import javax.inject.Inject
 
 @HiltAndroidTest
 @ExperimentalCoroutinesApi
-@UninstallModules(DatabaseModule::class, ChatServiceModule::class)
 class DaoTest {
 
     @Inject
@@ -27,9 +24,6 @@ class DaoTest {
 
     @Inject
     lateinit var messageDao: MessageDao
-
-    private val device = Device("macAddress", "")
-    private val bluetoothMessage = BluetoothMessage("id", "body", "macAddress", "", "create time")
 
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
@@ -45,26 +39,29 @@ class DaoTest {
 
     @Test
     fun checkInsertDevice() = runBlockingTest {
-        deviceDao.insert(device)
-        assertThat(deviceDao.getAllDevice()).contains(device)
+        deviceDao.insert(fakeDevices.first())
+        assertThat(deviceDao.getAllDevice()).contains(fakeDevices.first())
     }
 
     @Test
     fun checkInsertBluetoothMessage() = runBlockingTest {
-        messageDao.insert(bluetoothMessage)
-        assertThat(messageDao.getAllBluetoothMessage()).contains(bluetoothMessage)
+        messageDao.insert(sentBtMessage)
+        assertThat(messageDao.getAllBluetoothMessage()).contains(sentBtMessage)
     }
 
     @Test
     fun checkRelationShip() = runBlockingTest {
-        deviceDao.insert(device)
-        messageDao.insert(bluetoothMessage)
-        assertThat(messageDao.getAllBluetoothMessage().contains(bluetoothMessage)).isTrue()
-        assertThat(deviceDao.getAllDevice().contains(device)).isTrue()
+        deviceDao.insert(fakeDevices.first())
+        messageDao.insert(sentBtMessage)
+        messageDao.insert(receivedBtMessage)
+
         val allDeicesWithMessages = deviceDao.getAllDevicesWithMessages().first().first()
-        assertThat(allDeicesWithMessages.device).isEqualTo(device)
+        assertThat(allDeicesWithMessages.device).isEqualTo(fakeDevices.first())
+        assertThat(allDeicesWithMessages.sentBluetoothMessages.first()).isEqualTo(
+            sentBtMessage
+        )
         assertThat(allDeicesWithMessages.receivedBluetoothMessages.first()).isEqualTo(
-            bluetoothMessage
+            receivedBtMessage
         )
     }
 
