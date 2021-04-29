@@ -77,7 +77,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
             vModel.connectionState.collect {
                 if (it is ConnectionEvents.Connected)
                     hideDisconnectBar()
-                if (it is ConnectionEvents.Disconnect)
+                if (it is ConnectionEvents.Disconnect || it is ConnectionEvents.ConnectionFailed)
                     showDisconnectBar()
             }
         }

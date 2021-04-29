@@ -1,30 +1,31 @@
 package com.peer_messanger.bluetoothchat
 
 import android.bluetooth.BluetoothAdapter
-import android.util.Log
 import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.fakeDevices
-import com.peer_messanger.util.TAG
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.withContext
 
 
 @ExperimentalCoroutinesApi
 class FakeBluetoothChatService : BluetoothChatServiceInterface {
 
 
-
-    private val connectionState = MutableStateFlow<ConnectionEvents?>(null)
+    private val connectionState = MutableStateFlow<ConnectionEvents>(ConnectionEvents.Disconnect())
     private val fakeReceivedMessageChannel = Channel<String>()
+    private val fakeFinedDevice = MutableStateFlow<ScanResource?>(null)
     private val bluetoothState = MutableStateFlow(BluetoothAdapter.STATE_ON)
     private var isStarted = false
     private var deviceHasBluetooth = true
+    private var hasPairedDevice = false
+
+
+    fun setHasPairedDevice(has: Boolean) {
+        hasPairedDevice = has
+    }
 
     fun setDeviceHasBluetooth(has: Boolean) {
         bluetoothState.value = BluetoothAdapter.STATE_DISCONNECTED
@@ -36,7 +37,7 @@ class FakeBluetoothChatService : BluetoothChatServiceInterface {
     }
 
 
-    override fun connectionState(): Flow<ConnectionEvents> = connectionState.filterNotNull()
+    override fun connectionState(): Flow<ConnectionEvents> = connectionState
 
     override fun receivedMessages(): Flow<String> = fakeReceivedMessageChannel.receiveAsFlow()
 
@@ -46,12 +47,13 @@ class FakeBluetoothChatService : BluetoothChatServiceInterface {
     }
 
     override fun stop() {
+        connectionState.value = ConnectionEvents.ConnectionFailed
         isStarted = false
     }
 
     override suspend fun connect(macAddress: String){
         fakeDevices.forEach {
-            if (it.macAddress == macAddress) {
+            if (it.macAddress == macAddress && isStarted) {
                 connectionState.emit(ConnectionEvents.Connected(it))
                 return
             }
@@ -75,18 +77,18 @@ class FakeBluetoothChatService : BluetoothChatServiceInterface {
     }
 
     override fun startDiscovery(): Boolean {
+        fakeFinedDevice.value = ScanResource.DiscoveryStarted
+        fakeDevices.forEach {
+            fakeFinedDevice.value = ScanResource.DeviceFound(it)
+        }
+        fakeFinedDevice.value = ScanResource.DiscoveryFinished
         return true
     }
 
-    override fun discoveryDevices(): Flow<ScanResource> = channelFlow {
-        offer(ScanResource.DiscoveryStarted)
-        fakeDevices.forEach {
-            offer(ScanResource.DeviceFound(it))
-        }
-        offer(ScanResource.DiscoveryFinished)
-    }
+    override fun discoveryDevices(): Flow<ScanResource> = fakeFinedDevice.filterNotNull()
 
-    override fun pairedDevices(): List<Device> = fakeDevices
+    override fun pairedDevices(): List<Device> =
+        if (hasPairedDevice) fakeDevices else emptyList()
 
     override fun bluetoothState(): Flow<Int> = bluetoothState
 

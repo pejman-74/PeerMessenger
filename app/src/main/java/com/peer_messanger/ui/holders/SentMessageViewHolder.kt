@@ -14,10 +14,12 @@ class SentMessageViewHolder(private val itemBinding: SentMessageBinding) :
         itemBinding.tvChatTime.text = bluetoothMessage.createdTime?.toLocalTime()
         itemBinding.cvChatMessage.setTailLength("right", 10f)
         itemBinding.lavMessageStatus.apply {
-            if (bluetoothMessage.isDelivered == true) {
+            tag = if (bluetoothMessage.isDelivered == true) {
                 setImageResource(R.drawable.ic_check)
+                R.drawable.ic_check
             } else {
                 setAnimation(R.raw.message_watch)
+                R.raw.message_watch
             }
         }
     }

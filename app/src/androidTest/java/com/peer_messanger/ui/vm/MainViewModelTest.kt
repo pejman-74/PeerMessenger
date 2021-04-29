@@ -5,13 +5,12 @@ import androidx.test.filters.SmallTest
 import com.google.common.truth.Truth.assertThat
 import com.peer_messanger.bluetoothchat.BluetoothChatServiceInterface
 import com.peer_messanger.bluetoothchat.FakeBluetoothChatService
-import com.peer_messanger.data.model.BluetoothMessage
 import com.peer_messanger.data.repository.LocalRepositoryInterface
-import com.peer_messanger.di.module.ChatServiceModule
-import com.peer_messanger.di.module.DatabaseModule
+import com.peer_messanger.receivedBtMessage
+import com.peer_messanger.sentBtMessage
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.UninstallModules
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestCoroutineDispatcher
@@ -23,16 +22,9 @@ import org.junit.Test
 import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
-@UninstallModules(DatabaseModule::class, ChatServiceModule::class)
 @HiltAndroidTest
 @SmallTest
 class MainViewModelTest {
-
-
-    private val receivedBtMessage =
-        BluetoothMessage("id", "body", "macAddress", "0", "create time", false)
-    private val sentBtMessage =
-        BluetoothMessage("id", "body", "0", "macAddress", "create time", false)
 
 
     private lateinit var mainViewModel: MainViewModel
@@ -45,7 +37,8 @@ class MainViewModelTest {
 
 
     @Inject
-    lateinit var coroutineDispatcher: TestCoroutineDispatcher
+    lateinit var injectedCoroutineDispatcher: CoroutineDispatcher
+    private val coroutineDispatcher get() = injectedCoroutineDispatcher as TestCoroutineDispatcher
 
     @get:Rule
     var hiltRule = HiltAndroidRule(this)
@@ -60,6 +53,8 @@ class MainViewModelTest {
     fun setUp() {
         hiltRule.inject()
         mainViewModel = MainViewModel(localRepository, chatServiceInterface, coroutineDispatcher)
+        mainViewModel.startChatService()
+        fakeBluetoothChatService.setHasPairedDevice(true)
     }
 
     @After

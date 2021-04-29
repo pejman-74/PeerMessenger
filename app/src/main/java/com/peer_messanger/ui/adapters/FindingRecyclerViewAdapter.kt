@@ -2,7 +2,6 @@ package com.peer_messanger.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import com.peer_messanger.data.model.Device
@@ -13,9 +12,6 @@ import com.peer_messanger.ui.listener.BluetoothDeviceItemListener
 class FindingRecyclerViewAdapter(private val bluetoothDeviceItemListener: BluetoothDeviceItemListener) :
     ListAdapter<Device, FindingItemViewHolder>(bluetoothDeviceDiffUtilItemCallback) {
 
-
-    private val differ = AsyncListDiffer(this, bluetoothDeviceDiffUtilItemCallback)
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FindingItemViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
         val binding = AvailableDevicesBinding.inflate(layoutInflater, parent, false)
@@ -23,12 +19,11 @@ class FindingRecyclerViewAdapter(private val bluetoothDeviceItemListener: Blueto
     }
 
     override fun onBindViewHolder(holder: FindingItemViewHolder, position: Int) {
-        val item = differ.currentList[position]
+        val item = getItem(position)
         holder.bind(item)
         holder.itemView.setOnClickListener { bluetoothDeviceItemListener.onClick(item) }
     }
 
-    override fun getItemCount(): Int = differ.currentList.size
 
 }
 
@@ -38,10 +33,7 @@ private val bluetoothDeviceDiffUtilItemCallback = object :
         return oldItem.macAddress == newItem.macAddress
     }
 
-    override fun areContentsTheSame(
-        oldItem: Device,
-        newItem: Device
-    ): Boolean {
-        return oldItem.name == oldItem.name
+    override fun areContentsTheSame(oldItem: Device, newItem: Device): Boolean {
+        return oldItem == oldItem
     }
 }

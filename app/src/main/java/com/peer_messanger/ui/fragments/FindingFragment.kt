@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,17 +14,16 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.peer_messanger.R
 import com.peer_messanger.data.model.Device
 import com.peer_messanger.data.wrapper.ScanResource
 import com.peer_messanger.databinding.FragmentFindingBinding
-import com.peer_messanger.ui.activity.MainActivity
 import com.peer_messanger.ui.adapters.FindingRecyclerViewAdapter
 import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.listener.BluetoothDeviceItemListener
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.PERMISSION_REQUEST_CODE
+import com.peer_messanger.util.TAG
 import com.peer_messanger.util.singleButtonAlertDialog
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
@@ -35,40 +35,23 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
     BluetoothDeviceItemListener {
 
 
-    private lateinit var mainActivity: MainActivity
-    private lateinit var availableRecyclerViewAdapter: FindingRecyclerViewAdapter
-    lateinit var pairedRecyclerViewAdapter: FindingRecyclerViewAdapter
+    private val availableRecyclerViewAdapter by lazy { FindingRecyclerViewAdapter(this) }
+    private val pairedRecyclerViewAdapter by lazy { FindingRecyclerViewAdapter(this) }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        mainActivity = requireActivity() as MainActivity
-
-        availableRecyclerViewAdapter = FindingRecyclerViewAdapter(this)
-        pairedRecyclerViewAdapter = FindingRecyclerViewAdapter(this)
-        vBinding.rvPairedDevice.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = pairedRecyclerViewAdapter
-        }
 
 
-        vModel.pairedDevices().let {
-            pairedRecyclerViewAdapter.submitList(ArrayList(it))
-        }
+        setRecyclerViews()
 
+        setListeners()
 
-        vBinding.rvOnlineDevice.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            setHasFixedSize(true)
-            adapter = availableRecyclerViewAdapter
-        }
+        setObservers()
 
-        vBinding.pfabSearch.setOnClickListener {
-            checkPermissions()
-        }
-        vBinding.pfabMakeVisible.setOnClickListener {
-            makeVisible()
-        }
+    }
+
+    private fun setObservers() {
         val foundedDevices = ArrayList<Device>()
 
         lifecycleScope.launch {
@@ -91,6 +74,29 @@ class FindingFragment : BaseFragment<MainViewModel, FragmentFindingBinding>(),
                 }
 
             }
+        }
+    }
+
+    private fun setListeners() {
+        vBinding.pfabSearch.setOnClickListener {
+            checkPermissions()
+        }
+        vBinding.pfabMakeVisible.setOnClickListener {
+            makeVisible()
+        }
+    }
+
+    private fun setRecyclerViews() {
+        vBinding.rvPairedDevice.apply {
+            adapter = pairedRecyclerViewAdapter
+        }
+
+        vBinding.rvOnlineDevice.apply {
+            adapter = availableRecyclerViewAdapter
+        }
+
+        vModel.pairedDevices().let {
+            pairedRecyclerViewAdapter.submitList(ArrayList(it))
         }
 
     }
