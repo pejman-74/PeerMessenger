@@ -5,9 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.asLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.peer_messanger.data.model.Device
 import com.peer_messanger.databinding.FragmentHomeBinding
 import com.peer_messanger.ui.adapters.HomeRecyclerViewAdapter
@@ -16,41 +15,47 @@ import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.listener.HomeItemListener
 import com.peer_messanger.ui.vm.MainViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collect
 
 @ExperimentalCoroutinesApi
 class HomeFragment : BaseFragment<MainViewModel, FragmentHomeBinding>(), HomeItemListener {
 
-    lateinit var homeRecyclerViewAdapter: HomeRecyclerViewAdapter
+    private val homeRecyclerViewAdapter by lazy { HomeRecyclerViewAdapter(this) }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setListeners()
+        setRecyclerView()
+        setObservers()
+
+
+    }
+
+    private fun setObservers() {
+        lifecycleScope.launchWhenStarted {
+            vModel.allDevicesWithMessages.collect { listDeviceWithMessages ->
+                val homeRecyclerViewItems = listDeviceWithMessages.map { deviceWithMessages ->
+
+                    val lastMessage = deviceWithMessages.lastMessage?.body
+
+                    HomeRecyclerViewItem(deviceWithMessages.device, lastMessage)
+                }
+                homeRecyclerViewAdapter.submitList(homeRecyclerViewItems)
+            }
+        }
+    }
+
+    private fun setListeners() {
         vBinding.fabAddNew.setOnClickListener {
             findNavController().navigate(HomeFragmentDirections.actionHomeFragmentToFindingFragment())
         }
+    }
 
-        homeRecyclerViewAdapter = HomeRecyclerViewAdapter(this)
+    private fun setRecyclerView() {
         vBinding.rvHome.apply {
             adapter = homeRecyclerViewAdapter
         }
-
-        vModel.allDevicesWithMessages.asLiveData()
-            .observe(viewLifecycleOwner, { listDeviceWithMessages ->
-                val homeRecyclerViewItems = ArrayList<HomeRecyclerViewItem>()
-
-                listDeviceWithMessages.forEach { deviceWithMessages ->
-                    val lastMessage =
-                        deviceWithMessages.receivedBluetoothMessages.plus(deviceWithMessages.sentBluetoothMessages)
-                            .maxByOrNull { it.createdTime }
-                    homeRecyclerViewItems.add(
-                        HomeRecyclerViewItem(
-                            deviceWithMessages.device,
-                            lastMessage?.body
-                        )
-                    )
-                }
-                homeRecyclerViewAdapter.setData(homeRecyclerViewItems)
-            })
     }
 
     override fun onCreateView(

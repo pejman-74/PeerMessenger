@@ -69,7 +69,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
                 val messages =
                     deviceWithMessages.receivedBluetoothMessages.plus(deviceWithMessages.sentBluetoothMessages)
                         .sortedBy { it.createdTime }
-                chatRecyclerViewAdapter.setData(messages)
+                chatRecyclerViewAdapter.submitList(messages)
                 vBinding.rvChat.smoothScrollToPosition(if (messages.isNotEmpty()) messages.size - 1 else 0)
             }
         }

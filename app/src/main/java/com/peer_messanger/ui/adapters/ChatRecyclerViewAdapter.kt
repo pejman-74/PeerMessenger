@@ -2,8 +2,8 @@ package com.peer_messanger.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.peer_messanger.R
 import com.peer_messanger.data.model.BluetoothMessage
@@ -14,35 +14,12 @@ import com.peer_messanger.ui.holders.SentMessageViewHolder
 import com.peer_messanger.util.selfUserDatabaseId
 import java.util.*
 
-class ChatRecyclerViewAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-
-    //used AsyncListDiffer for improve recycler view performance
-    private val messageDiffUtilItemCallback = object :
-        DiffUtil.ItemCallback<BluetoothMessage>() {
-        override fun areItemsTheSame(
-            oldItem: BluetoothMessage,
-            newItem: BluetoothMessage
-        ): Boolean {
-            return oldItem.id == newItem.id
-        }
-
-        override fun areContentsTheSame(
-            oldItem: BluetoothMessage,
-            newItem: BluetoothMessage
-        ): Boolean {
-            return oldItem == newItem
-        }
-
-    }
-    private val differ = AsyncListDiffer(this, messageDiffUtilItemCallback)
-
-    fun setData(items: List<BluetoothMessage>) =
-        differ.submitList(items)
-
-    override fun getItemCount() = differ.currentList.size
+class ChatRecyclerViewAdapter : ListAdapter<BluetoothMessage, RecyclerView.ViewHolder>(
+    messageDiffUtilItemCallback
+) {
 
     override fun getItemViewType(position: Int): Int {
-        return if (differ.currentList[position].messageOwner == selfUserDatabaseId)
+        return if (getItem(position).messageOwner == selfUserDatabaseId)
             R.layout.sent_message
         else
             R.layout.received_message
@@ -71,7 +48,7 @@ class ChatRecyclerViewAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() 
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val message = differ.currentList[position]
+        val message = getItem(position)
         when (holder) {
             is SentMessageViewHolder -> {
                 holder.bind(message)
@@ -81,6 +58,24 @@ class ChatRecyclerViewAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() 
             }
         }
 
+    }
+
+}
+
+private val messageDiffUtilItemCallback = object :
+    DiffUtil.ItemCallback<BluetoothMessage>() {
+    override fun areItemsTheSame(
+        oldItem: BluetoothMessage,
+        newItem: BluetoothMessage
+    ): Boolean {
+        return oldItem.id == newItem.id
+    }
+
+    override fun areContentsTheSame(
+        oldItem: BluetoothMessage,
+        newItem: BluetoothMessage
+    ): Boolean {
+        return oldItem == newItem
     }
 
 }
