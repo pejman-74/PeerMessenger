@@ -4,14 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import com.peer_messanger.R
 import com.peer_messanger.data.wrapper.ConnectionEvents
 import com.peer_messanger.databinding.FragmentChatBinding
 import com.peer_messanger.ui.adapters.ChatRecyclerViewAdapter
-import com.peer_messanger.ui.base.BaseFragment
 import com.peer_messanger.ui.vm.MainViewModel
 import com.peer_messanger.util.appCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,10 +21,15 @@ import kotlinx.coroutines.flow.collect
 
 @ExperimentalCoroutinesApi
 @AndroidEntryPoint
-class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
+class ChatFragment : Fragment() {
 
     private val chatRecyclerViewAdapter by lazy { ChatRecyclerViewAdapter() }
     private val args: ChatFragmentArgs by navArgs()
+
+    private var _vBinding: FragmentChatBinding? = null
+    private val vBinding get() = _vBinding!!
+
+    private val vModel: MainViewModel by activityViewModels()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -63,6 +69,7 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
 
 
     private fun setObservers() {
+
         lifecycleScope.launchWhenStarted {
             vModel.deviceWithMessages.collect { deviceWithMessages ->
                 deviceWithMessages ?: return@collect
@@ -96,23 +103,20 @@ class ChatFragment : BaseFragment<MainViewModel, FragmentChatBinding>() {
 
     private fun hideDisconnectBar() {
         vBinding.clChatUserDisconnectBar.visibility = View.GONE
-
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        vBinding = FragmentChatBinding.inflate(layoutInflater, container, false)
+        _vBinding = FragmentChatBinding.inflate(layoutInflater, container, false)
         return vBinding.root
     }
 
-    override fun getViewModel() = activityViewModels<MainViewModel>()
-
-    override fun getViewBinding(
-        layoutInflater: LayoutInflater,
-        container: ViewGroup?
-    ) = FragmentChatBinding.inflate(layoutInflater, container, false)
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _vBinding = null
+    }
 
 
 }
