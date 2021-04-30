@@ -18,6 +18,9 @@ data class DeviceWithMessages(
 ) {
     val lastMessage
         get() = receivedBluetoothMessages.plus(sentBluetoothMessages).maxByOrNull { it.createdTime }
+
+    val sortedMessages
+        get() = receivedBluetoothMessages.plus(sentBluetoothMessages).sortedBy { it.createdTime }
 }
 
 

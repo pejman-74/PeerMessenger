@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.navArgs
 import com.peer_messanger.R
@@ -73,10 +72,8 @@ class ChatFragment : Fragment() {
         lifecycleScope.launchWhenStarted {
             vModel.deviceWithMessages.collect { deviceWithMessages ->
                 deviceWithMessages ?: return@collect
-                val messages =
-                    deviceWithMessages.receivedBluetoothMessages.plus(deviceWithMessages.sentBluetoothMessages)
-                        .sortedBy { it.createdTime }
-                chatRecyclerViewAdapter.submitList(messages)
+                val messages = deviceWithMessages.sortedMessages
+                chatRecyclerViewAdapter.submitList(deviceWithMessages.sortedMessages)
                 vBinding.rvChat.smoothScrollToPosition(if (messages.isNotEmpty()) messages.size - 1 else 0)
             }
         }
